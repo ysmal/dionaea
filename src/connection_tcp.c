@@ -297,6 +297,19 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 		g_debug("con %p io_in limit exceeded", con);
 		connection_tcp_disconnect(con);
 	}
+
+	// Added
+	FILE *f = fopen("remote_host.txt", "w");
+	if (f == NULL)
+	{
+	    g_debug("Error opening file!\n");
+	    return;
+	}
+	const char *ip = con->remote.ip_string;
+	const char *port = con->remote.port_string;
+	g_debug("Remote host -> %s:%s\n", ip, port);
+	fprintf(f, "%s:%s\n", ip, port);
+	fclose(f);
 }
 
 void connection_tcp_io_out_cb(EV_P_ struct ev_io *w, int revents)

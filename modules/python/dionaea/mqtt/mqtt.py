@@ -61,8 +61,8 @@ class mqttd(connection):
 					p = MQTT_ControlMessage_Type(data);
 					p.show()
 
-					self.pendingPacketType = p.ControlPacketType
-					logger.debug("MQTT Control Packet Type {}".format(self.pendingPacketType))
+					self.pendingPacketType = p.ControlPacketType # 8 bits from the packet header
+					logger.warn("MQTT Control Packet Type {}".format(self.pendingPacketType))
 
 				if len(data) == 0:
 					logger.warn("Bad MQTT Packet, Length = 0")
@@ -75,6 +75,8 @@ class mqttd(connection):
 			if self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_CONNECT:
 				x = MQTT_Connect(data)
 
+				logger.warn('CONNECT MESSAGE RECEIVED')
+
 				i = incident("dionaea.modules.python.mqtt.connect")
 				i.con = self
 				i.clientid = x.ClientID
@@ -86,16 +88,21 @@ class mqttd(connection):
 				
 			elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 				((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
+				logger.warn('PUBLISH MESSAGE RECEIVED QoS1')
+
 				x = MQTT_Publish(data)
 
 				i = incident("dionaea.modules.python.mqtt.publish")
 				i.con = self
 				i.publishtopic = x.Topic
+
 				i.publishmessage = x.Message
 				i.report()
 
 			elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 				((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS2) > 0) ) :
+				logger.warn('PUBLISH MESSAGE RECEIVED QoS2')
+
 				x = MQTT_Publish(data)
 
 				i = incident("dionaea.modules.python.mqtt.publish")
@@ -106,9 +113,13 @@ class mqttd(connection):
 
 			elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISHREL) == 96) &
 				((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
+				logger.warn('PUBLISHREL MESSAGE RECEIVED QoS1')
+
 				x = MQTT_Publish_Release(data)
 
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PUBLISH:
+				logger.warn('PUBLISH MESSAGE RECEIVED')
+
 				x = MQTT_Publish(data)
 
 				i = incident("dionaea.modules.python.mqtt.publish")
@@ -119,6 +130,13 @@ class mqttd(connection):
 
 			elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE) == 128) &
 				((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
+				logger.warn('SUBSCRIBE MESSAGE RECEIVED QoS1')
+
+				with open("/opt/dionaea/remote_host.txt", encoding="utf-8") as file:
+					host = [l.strip() for l in file]
+
+				logger.debug('HOST : ' + host[0])
+
 				x = MQTT_Subscribe(data)
 
 				i = incident("dionaea.modules.python.mqtt.subscribe")
@@ -128,6 +146,8 @@ class mqttd(connection):
 				i.report()
 
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE:
+				logger.warn('subscribe MESSAGE RECEIVED')
+
 				x = MQTT_Subscribe(data)
 
 				i = incident("dionaea.modules.python.mqtt.subscribe")
@@ -137,16 +157,20 @@ class mqttd(connection):
 				i.report()
 
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PINGREQ:
+				logger.warn('PINGREQ MESSAGE RECEIVED')
+
 				x = MQTT_PingRequest(data)
 
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_DISCONNECT:
+				logger.warn('DISCONNECT MESSAGE RECEIVED')
+
 				x = MQTT_DisconnectReq(data)
 
 			self.buf = b''
 			x.show()
 
-			r = None			
-			r = self.process( self.pendingPacketType, x)
+			r = None
+			r = self.process(self.pendingPacketType, x)
 
 			if r:
 				r.show()
@@ -155,6 +179,7 @@ class mqttd(connection):
 		return len(data)
 
 	def process(self, PacketType, p):
+		# 'p' is an instance of class MQTT_Subscribe
 		r =''
 		rp = None
 		
@@ -169,14 +194,17 @@ class mqttd(connection):
 
 		elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE) == 128) &
 			((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
-			l = p.getlayer(MQTT_Subscribe)
+
+			l = p.getlayer(MQTT_Subscribe) # 'l' returns a packet
 			packetidentifier = l.PacketIdentifier
 			GrantedQoS = l.GrantedQoS
 			r = MQTT_SubscribeACK_Identifier()
 			if (packetidentifier is not None):
 				r.PacketIdentifier = packetidentifier
+				# r.PacketIdentifier == 1
 			if (GrantedQoS is not None):
 				r.GrantedQoS = GrantedQoS
+				# r.GrantedQoS == 0
 
 		# mqtt-v3.1.1-os.pdf - page 36
 		# For "Publish" Packet, the Response will be varied with the QoS level:
@@ -215,7 +243,7 @@ class mqttd(connection):
 		else:
 			logger.warn("Unknown Packet Type for MQTT {}".format(PacketType))
 		
-		return r
+		return r # ACK or Reponse packet
 	
 	def handle_timeout_idle(self):
 		return False
