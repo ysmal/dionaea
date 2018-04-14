@@ -132,10 +132,7 @@ class mqttd(connection):
 				((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
 				logger.warn('SUBSCRIBE MESSAGE RECEIVED QoS1')
 
-				with open("/opt/dionaea/remote_host.txt", encoding="utf-8") as file:
-					host = [l.strip() for l in file]
-
-				logger.debug('HOST : ' + host[0])
+				logger.debug('REMOTE -> ' + str(self.remote.host) + ':' + str(self.remote.port))
 
 				x = MQTT_Subscribe(data)
 
