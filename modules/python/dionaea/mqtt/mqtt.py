@@ -69,7 +69,7 @@ class mqttd(connection):
 					p = MQTT_ControlMessage_Type(data);
 					p.show()
 
-					self.pendingPacketType = p.ControlPacketType # 8 bits from the packet header
+					self.pendingPacketType = p.ControlPacketType
 					logger.warn("MQTT Control Packet Type {}".format(self.pendingPacketType))
 
 				if len(data) == 0:
@@ -192,12 +192,11 @@ class mqttd(connection):
 
 			if r:
 				r.show()
-				self.send(r.build())
+				self.send(r.build()) # Send the building each layer of the MQTT packet
 
 			if publish_to_send:
 				# Added: get saved objects (clients) and send to them
-				clients = get_clients(x.Topic)
-				logger.debug('Sending to clients having port: ' + ' AND '.join(str(c.remote.port) for c in clients))
+				logger.debug('Sending to clients having port: ' + ' AND '.join(str(c.remote.port) for c in get_clients(x.Topic)))
 				send_to_clients(x.Topic, x.build())
 				
 		return len(data)
@@ -255,7 +254,7 @@ class mqttd(connection):
 
 		elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 			((PacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) == 0) ) :
-			r = ''
+			r = None
 
 		elif (PacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISHREL) == 96:
 			l = p.getlayer(MQTT_Publish_Release)

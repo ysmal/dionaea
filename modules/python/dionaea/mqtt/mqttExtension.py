@@ -6,15 +6,6 @@ def save_client(client, topic):
 	else:
 		clients[topic] = {client}
 
-# def save_client(client, topic):
-# 	if topic in clients:
-# 		if not clients[topic]:
-# 			clients[topic] = []
-# 		else:
-# 			clients[topic].append(client)
-# 	else:
-# 		clients[topic] = {client}
-
 def get_clients(topic):
 	if topic in clients:
 		return clients[topic]
