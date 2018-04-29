@@ -2,7 +2,7 @@ import logging
 
 logger = logging.getLogger('mqtt')
 
-subscriptions = {}
+clients = {}
 
 class Session(object):
 	"""Session object to keep track of persistent sessions"""
@@ -17,7 +17,8 @@ class Session(object):
 
 
 def connect_callback(packet):
-	pass
+	clean_session = packet.ConnectFlags #& 1 != 0
+	logger.debug('clean_session = ' + str(clean_session))
 
 def publish_callback(packet):
 	logger.debug('Sending to clients having port: ' + ' AND '.join(str(c.remote.port) for c in get_clients(packet.Topic)))
