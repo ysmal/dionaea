@@ -85,7 +85,7 @@ PYSCRIPTS += mqtt/mqtt.py
 PYSCRIPTS += mqtt/include/packets.py
 PYSCRIPTS += mqtt/mqtt.py
 PYSCRIPTS += mqtt/include/__init__.py
-PYSCRIPTS += mqtt/mqttExtension.py
+PYSCRIPTS += mqtt/broker.py
 PYSCRIPTS += upnp/__init__.py
 PYSCRIPTS += upnp/upnp.py
 

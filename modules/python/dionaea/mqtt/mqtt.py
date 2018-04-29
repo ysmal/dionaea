@@ -35,7 +35,7 @@ import os
 import tempfile
 
 from dionaea.mqtt.include.packets import *
-from dionaea.mqtt.mqttExtension import *
+from dionaea.mqtt.broker import *
 
 logger = logging.getLogger('mqtt')
 
@@ -55,14 +55,16 @@ class mqttd(connection):
 		size = 0
 		chunk = b''
 
-		# Added
-		logger.debug('REMOTE -> ' + str(self.remote.host) + ':' + str(self.remote.port))
+		#logger.debug('REMOTE -> ' + str(self.remote.host) + ':' + str(self.remote.port))
 		
 		if len(data) > l:
 			p = None
 			x = None
 			# Added
-			publish_to_send = False
+			connect = False
+			publish = False
+			subscribe = False
+			disconnect = False
 			try:
 
 				if len(data) > 0:
@@ -92,6 +94,9 @@ class mqttd(connection):
 				i.willmessage = x.WillMessage
 				i.username = x.Username
 				i.password = x.Password
+
+				connect = True
+
 				i.report()
 				
 			elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
@@ -106,7 +111,7 @@ class mqttd(connection):
 				i.publishmessage = x.Message
 
 				# Added
-				publish_to_send = True
+				publish = True
 
 				i.report()
 
@@ -122,7 +127,7 @@ class mqttd(connection):
 				i.publishmessage = x.Message
 
 				# Added
-				publish_to_send = True
+				publish = True
 
 				i.report()
 
@@ -143,7 +148,7 @@ class mqttd(connection):
 				i.publishmessage = x.Message
 
 				# Added
-				publish_to_send = True
+				publish = True
 
 				i.report()
 
@@ -161,6 +166,8 @@ class mqttd(connection):
 				# Added: save current object (client) to call his send() function later
 				save_client(self, x.Topic)
 
+				subscribe = True
+
 				i.report()
 
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE:
@@ -172,6 +179,9 @@ class mqttd(connection):
 				i.con = self
 				i.subscribemessageid = x.PacketIdentifier
 				i.subscribetopic = x.Topic
+
+				subscribe = True
+
 				i.report()
 
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PINGREQ:
@@ -184,6 +194,8 @@ class mqttd(connection):
 
 				x = MQTT_DisconnectReq(data)
 
+				disconnect = True
+
 			self.buf = b''
 			x.show()
 
@@ -194,15 +206,18 @@ class mqttd(connection):
 				r.show()
 				self.send(r.build()) # Send the building each layer of the MQTT packet
 
-			if publish_to_send:
-				# Added: get saved objects (clients) and send to them
-				logger.debug('Sending to clients having port: ' + ' AND '.join(str(c.remote.port) for c in get_clients(x.Topic)))
-				send_to_clients(x.Topic, x.build())
+			if connect:
+				connect_callback(x)
+			elif publish:
+				publish_callback(x)
+			elif subscribe:
+				subscribe_callback(x)
+			elif disconnect:
+				disconnect_callback(x)
 				
 		return len(data)
 
 	def process(self, PacketType, p):
-		# 'p' is an instance of class MQTT_Subscribe for example
 		r =''
 		rp = None
 		
@@ -218,7 +233,7 @@ class mqttd(connection):
 		elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE) == 128) &
 			((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
 
-			l = p.getlayer(MQTT_Subscribe) # 'l' returns a packet
+			l = p.getlayer(MQTT_Subscribe)
 			packetidentifier = l.PacketIdentifier
 			GrantedQoS = l.GrantedQoS
 			r = MQTT_SubscribeACK_Identifier()
@@ -266,7 +281,7 @@ class mqttd(connection):
 		else:
 			logger.warn("Unknown Packet Type for MQTT {}".format(PacketType))
 		
-		return r # ACK or Reponse packet
+		return r
 	
 	def handle_timeout_idle(self):
 		return False
