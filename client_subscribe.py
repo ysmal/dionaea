@@ -4,6 +4,7 @@ from utils import gen_client_id
 broker_address = "10.0.2.15"
 broker_port = 1883
 keepalive = 60
+client_id = None
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
@@ -14,7 +15,9 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     print(msg.topic + ": " + str(msg.payload))
 
-client = mqtt.Client(client_id=gen_client_id(), clean_session=True)
+if not client_id:
+	client_id = gen_client_id()
+client = mqtt.Client(client_id=client_id, clean_session=True)
 client.on_connect = on_connect
 client.on_message = on_message
 

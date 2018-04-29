@@ -6,6 +6,7 @@ connected = False
 broker_address = "10.0.2.15"
 broker_port = 1883
 keepalive = 60
+client_id = None
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
@@ -16,7 +17,9 @@ def on_connect(client, userdata, flags, rc):
 	else:
 		print("Connection failed")
 
-client = mqtt.Client(client_id=gen_client_id(), clean_session=True)
+if not client_id:
+	client_id = gen_client_id()
+client = mqtt.Client(client_id=client_id, clean_session=True)
 client.on_connect = on_connect
 client.connect(host=broker_address, port=broker_port, keepalive=keepalive)
 client.loop_start()
