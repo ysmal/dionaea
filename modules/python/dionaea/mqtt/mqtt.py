@@ -39,8 +39,6 @@ from dionaea.mqtt.broker import *
 
 logger = logging.getLogger('mqtt')
 
-clients = []
-
 class mqttd(connection):
 	def __init__ (self):
 		connection.__init__(self,"tcp")
@@ -60,11 +58,11 @@ class mqttd(connection):
 		if len(data) > l:
 			p = None
 			x = None
-			# Added
 			connect = False
 			publish = False
 			subscribe = False
 			disconnect = False
+
 			try:
 
 				if len(data) > 0:
@@ -204,7 +202,8 @@ class mqttd(connection):
 				self.send(r.build()) # Send the building each layer of the MQTT packet
 
 			if connect:
-				connect_callback(x)
+				logger.debug('BEFORE connect_callback()')
+				connect_callback(self, x)
 			elif publish:
 				publish_callback(x)
 			elif subscribe:
