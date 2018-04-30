@@ -2,7 +2,7 @@ import logging
 
 logger = logging.getLogger('mqtt')
 
-clients = {}
+subscriptions = {}
 
 class Session(object):
 	"""Session object to keep track of persistent sessions"""
@@ -25,21 +25,21 @@ def publish_callback(packet):
 	send_to_clients(packet.Topic, packet.build())
 
 def subscribe_callback(client, packet):
-	if packet.Topic in clients:
-		clients[packet.Topic].add(client)
+	if packet.Topic in subscriptions:
+		subscriptions[packet.Topic].add(client)
 	else:
-		clients[packet.Topic] = {client}
+		subscriptions[packet.Topic] = {client}
 
 def disconnect_callback(packet):
 	pass
 
 def get_clients(topic):
-	if topic in clients:
-		return clients[topic]
+	if topic in subscripions:
+		return subscriptions[topic]
 	else:
 		return None
 
 def send_to_clients(topic, packet):
-	if topic in clients:
-		for client in clients[topic]:
+	if topic in subscriptions:
+		for client in subscriptions[topic]:
 			client.send(packet)
