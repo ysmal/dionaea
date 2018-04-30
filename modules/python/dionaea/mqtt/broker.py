@@ -24,18 +24,14 @@ def publish_callback(packet):
 	logger.debug('Sending to clients having port: ' + ' AND '.join(str(c.remote.port) for c in get_clients(packet.Topic)))
 	send_to_clients(packet.Topic, packet.build())
 
-def subscribe_callback(packet):
-	pass
+def subscribe_callback(client, packet):
+	if packet.Topic in clients:
+		clients[packet.Topic].add(client)
+	else:
+		clients[packet.Topic] = {client}
 
 def disconnect_callback(packet):
 	pass
-
-
-def save_client(client, topic):
-	if topic in clients:
-		clients[topic].add(client)
-	else:
-		clients[topic] = {client}
 
 def get_clients(topic):
 	if topic in clients:

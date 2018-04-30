@@ -163,9 +163,6 @@ class mqttd(connection):
 				i.subscribemessageid = x.PacketIdentifier
 				i.subscribetopic = x.Topic
 
-				# Added: save current object (client) to call his send() function later
-				save_client(self, x.Topic)
-
 				subscribe = True
 
 				i.report()
@@ -211,7 +208,7 @@ class mqttd(connection):
 			elif publish:
 				publish_callback(x)
 			elif subscribe:
-				subscribe_callback(x)
+				subscribe_callback(self, x)
 			elif disconnect:
 				disconnect_callback(x)
 				
