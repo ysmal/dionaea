@@ -25,10 +25,15 @@ def publish_callback(packet):
 	send_to_clients(packet.Topic, packet.build())
 
 def subscribe_callback(client, packet):
+	logger.debug('SUBSCRIPTION')
 	if packet.Topic in subscriptions:
-		subscriptions[packet.Topic].add(client)
+		if (client,_) in subscriptions[packet.Topic]:
+			subscriptions[packet.Topic].remove((client,_))
+			subscriptions[packet.Topic].add((client, packet.GrantedQoS))
+		else:
+			subscriptions[packet.Topic].add((client, packet.GrantedQoS))
 	else:
-		subscriptions[packet.Topic] = {client}
+		subscriptions[packet.Topic] = {(client, packet.GrantedQoS)}
 
 def disconnect_callback(packet):
 	pass
