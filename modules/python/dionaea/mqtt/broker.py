@@ -1,4 +1,5 @@
 import logging
+import re
 
 from dionaea.mqtt.include.packets import *
 from dionaea.mqtt.include.packets import *
@@ -84,13 +85,23 @@ def connect_callback(client, packet):
 	logger.debug('Sessions: \n' + str(sessions))
 
 def publish_callback(packet):
-	logger.warn('LIST OF SESSIONS :')
-	for key, value in sessions.items():
-		logger.warn(str(key))
+	#logger.warn('LIST OF SESSIONS :')
+	#for key, value in sessions.items():
+	#	logger.warn(str(key))
 	logger.warn('LIST OF TOPICS :' + str(subscriptions))
 	send_to_clients(packet.Topic, packet.build())
 
 def subscribe_callback(client, packet):
+	topic = str(packet.Topic)
+	# Check valid use of wildcards
+	if '#' in topic and not topic.endswith('#'):
+	    # [MQTT-4.7.1-2] Wildcard character '#' is only allowed as last character in filter
+	    return
+	if topic != "+":
+	    if '+' in topic:
+	        if "/+" not in topic and "+/" not in topic:
+	            # [MQTT-4.7.1-3] + wildcard character must occupy entire level
+	            return
 	add_subscription(packet.Topic, client, packet.GrantedQoS)
 
 def disconnect_callback(client, packet):
@@ -147,3 +158,12 @@ def existing_client_id(client_id):
 		if v.client_id == client_id:
 			return k
 	return None
+
+def matches(topic, a_filter):
+        if "#" not in a_filter and "+" not in a_filter:
+            # if filter doesn't contain wildcard, return exact match
+            return a_filter == topic
+        else:
+            # else use regex
+            match_pattern = re.compile(a_filter.replace('#', '.*').replace('$', '\$').replace('+', '[/\$\s\w\d]+'))
+            return match_pattern.match(topic)
