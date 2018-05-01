@@ -37,10 +37,13 @@ def connect_callback(client, packet):
 	if clean_session:
 		# No session state needs to be cached for this client after disconnection
 		if client_id is not None and client_id != "":
-			if client_id in sessions:
+			# Specified client_id is valid
+			existing_client = existing_client_id(client_id)
+			if existing_client:
 				# Client already has an existing session
-				delete_session(client, client_id)
+				delete_session(existing_client, client_id)
 			else:
+				# Client doesn't have an existing session
 				session = create_session(True, client, client_id)
 		else:
 			# No client_id specified, generates one
@@ -48,12 +51,11 @@ def connect_callback(client, packet):
 			session = create_session(True, client, client_id)
 	else:
 		# Client wants a persistent session
-		if client_id is None:
-			# If the client supplies a zero-byte ClientId, the Client MUST also set CleanSession to 1
-			# TODO: respond with CONNACK and return code 0x02 (Identifier rejected) and then close the 
-			# Network Connection.
+		if client_id is None or existing_client_id(client_id):
+			# TODO: Zero-byte client_id or client_id already exist, respond with CONNACK and 
+			# return code 0x02 (Identifier rejected) and then close the network connection.
 			pass
-		elif client_id not in sessions:
+		elif client not in sessions:
 			# Client never establish a session before
 			session = create_session(False, client, client_id)
 		else:
@@ -85,7 +87,8 @@ def subscribe_callback(client, packet):
 def disconnect_callback(client, packet):
 	session = sessions[client]
 	if session.last_will is not None:
-		# Handle last will (topic, message)
+		# TODO: Handle last will (topic, message) (Disconnect from the broker cleanly. Using
+		# disconnect() will not result in a will message being sent by the broker.)
 		#packet = MQTT_Publish(data)
 		#send_to_clients(topic, packet)
 		pass
@@ -113,5 +116,12 @@ def create_session(clean_session, client, client_id):
 def delete_session(client):
 	# TODO: Delete subscriptions
 	# logger.debug("Deleting session %s subscriptions" % repr(session.client_id))
+
 	# Delete session
 	del sessions[client]
+
+def existing_client_id(client_id):
+	for k, v in sessions.items():
+		if v.client_id == client_id:
+			return True
+	return False
