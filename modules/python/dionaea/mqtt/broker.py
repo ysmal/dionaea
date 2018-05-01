@@ -73,7 +73,7 @@ def subscribe_callback(client, packet):
 		#subscriptions[packet.Topic] = [i for i in subscriptions[packet.Topic] if (i[0].remote.host == client.remote.host and i[0].remote.port == client.remote.port)] #Si client déjà abonné à ce topic, on le retire
 		subscriptions[packet.Topic].add((client, packet.GrantedQoS))
 	else:
-		subscriptions[packet.Topic] = {client}
+		subscriptions[packet.Topic] = {(client, packet.GrantedQoS)}
 
 def disconnect_callback(packet):
 	pass
