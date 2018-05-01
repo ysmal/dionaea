@@ -106,15 +106,10 @@ def publish_callback(packet):
 
 def subscribe_callback(client, packet):
 	topic = str(packet.Topic)
+
 	# Check valid use of wildcards
-	if '#' in topic and not topic.endswith('#'):
-	    # [MQTT-4.7.1-2] Wildcard character '#' is only allowed as last character in filter
-	    return
-	if topic != "+":
-	    if '+' in topic:
-	        if "/+" not in topic and "+/" not in topic:
-	            # [MQTT-4.7.1-3] + wildcard character must occupy entire level
-	            return
+	if not valid_topic(topic):
+		return
 
 	add_subscription(packet.Topic, client, packet.GrantedQoS)
 
@@ -125,7 +120,8 @@ def subscribe_callback(client, packet):
 			if pending_retained_message:
 				send(client, pending_retained_message[0])
 		else:
-			logger.debug('SUBSCRIBE: NOT matches(topic, a_filter): ' + str(topic_retained) + ' and ' + str(topic))
+			logger.debug('SUBSCRIBE: NOT matches(topic, a_filter): ' 
+				+ str(topic_retained) + ' and ' + str(topic))
 
 def disconnect_callback(client, packet):
 	session = sessions[client]
@@ -138,15 +134,25 @@ def disconnect_callback(client, packet):
 		session.is_connected = False
 	logger.debug('Sessions: \n' + str(sessions))
 
-#def get_clients(topic):
-#	if topic in subscriptions:
-#		return [i[0] for i in subscriptions[topic]]			#Crée une liste des premiers éléments des tuples
-#	else:
-#		return None
+
+# ----------------------------------------------------------------------------------------------
+
+
+def valid_topic(topic):
+	if '#' in topic and not topic.endswith('#'):
+		# Wildcard character '#' is only allowed as last character in filter
+		return False
+	if topic != "+":
+		if '+' in topic:
+			if "/+" not in topic and "+/" not in topic:
+				# + wildcard character must occupy entire level
+				return False
+	return True
 
 def add_retained_message(topic, packet, qos):
 	retained_messages[topic] = (packet, qos)
-	logger.debug('added retained message for topic ' + str(topic) + ': ' + str(retained_messages[topic]))
+	logger.debug('added retained message for topic ' + str(topic) + ': ' 
+		+ str(retained_messages[topic]))
 
 def delete_retained_message(topic):
 	if topic in retained_messages:
@@ -161,7 +167,8 @@ def add_subscription(topic, client, qos):
 		subscriptions[topic] = {(client, qos)}
 	# Save subscription in client state
 	sessions[client].subscriptions.append(topic)
-	logger.debug('Subscriptions for client ' + str(client) + ': ' + str(sessions[client].subscriptions))
+	logger.debug('Subscriptions for client ' + str(client) + ': ' 
+		+ str(sessions[client].subscriptions))
 
 def delete_subscription(topic, client):
 	subscriptions[topic] = {i for i in subscriptions[topic] 
@@ -203,5 +210,6 @@ def matches(topic, a_filter):
 		return a_filter == topic
 	else:
 		# else use regex
-		match_pattern = re.compile(a_filter.replace('#', '.*').replace('$', '\$').replace('+', '[/\$\s\w\d]+'))
+		match_pattern = re.compile(a_filter.replace('#', '.*')
+			.replace('$', '\$').replace('+', '[/\$\s\w\d]+'))
 		return match_pattern.match(topic)

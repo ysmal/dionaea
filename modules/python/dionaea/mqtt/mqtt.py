@@ -151,25 +151,15 @@ class mqttd(connection):
 
 				i.report()
 
-			elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE) == 128) &
-				((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
-				logger.warn('SUBSCRIBE MESSAGE RECEIVED QoS1')
-
+			elif self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE == 128 :
 				x = MQTT_Subscribe(data)
 
-				i = incident("dionaea.modules.python.mqtt.subscribe")
-				i.con = self
-				i.subscribemessageid = x.PacketIdentifier
-				i.subscribetopic = x.Topic
-
-				subscribe = True
-
-				i.report()
-
-			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE:
-				logger.warn('subscribe MESSAGE RECEIVED')
-
-				x = MQTT_Subscribe(data)
+				if x.GrantedQoS == 0:
+					logger.warn('SUBSCRIBE MESSAGE RECEIVED QoS0')
+				elif x.GrantedQoS == 1:
+					logger.warn('SUBSCRIBE MESSAGE RECEIVED QoS1')
+				else:
+					logger.warn('SUBSCRIBE MESSAGE RECEIVED QoS2')
 
 				i = incident("dionaea.modules.python.mqtt.subscribe")
 				i.con = self
@@ -203,6 +193,7 @@ class mqttd(connection):
 
 			if r:
 				r.show()
+				s = r.build()
 				self.send(r.build()) # Send the building each layer of the MQTT packet
 
 			if connect:
@@ -229,9 +220,10 @@ class mqttd(connection):
 		elif PacketType == MQTT_CONTROLMESSAGE_TYPE_PINGREQ:
 			r = MQTT_PingResponse()
 
-		elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE) == 128) &
-			((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
+		#elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE) == 128) &
+		#	((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
 
+		elif PacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE == 128:
 			l = p.getlayer(MQTT_Subscribe)
 			packetidentifier = l.PacketIdentifier
 			GrantedQoS = l.GrantedQoS
@@ -242,7 +234,6 @@ class mqttd(connection):
 			if (GrantedQoS is not None):
 				r.GrantedQoS = GrantedQoS
 				# r.GrantedQoS == 0
-
 		# mqtt-v3.1.1-os.pdf - page 36
 		# For "Publish" Packet, the Response will be varied with the QoS level:
 		# - QoS level 0 - No response packet
