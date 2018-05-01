@@ -7,8 +7,10 @@ from dionaea.mqtt.utils import *
 
 logger = logging.getLogger('mqtt')
 
-subscriptions = {}
 sessions = dict()
+
+subscriptions = {}
+retained_messages = {}
 
 class Session(object):
 	"""Session object to keep track of persistent sessions"""
@@ -85,15 +87,22 @@ def connect_callback(client, packet):
 	logger.debug('Sessions: \n' + str(sessions))
 
 def publish_callback(packet):
-	topic 	 = packet.Topic
-	message  = packet.Message
-	retained = packet.HeaderFlags & 2**0 != 0
+	topic 		   = packet.Topic
+	message  	   = packet.Message
+	retained 	   = packet.HeaderFlags & 2**0 != 0
+	logger.debug('retained == ' + str(retained))
+	qos 		   = packet.HeaderFlags & 0b00000110
+	logger.debug('qos == ' + str(qos))
+
 	if retained:
-		# TODO
-		pass
+		if len(message) == 0 or message is None:
+			delete_retained_message(topic)
+		else:
+			add_retained_message(topic, packet, qos)
+
 	for a_filter, v in subscriptions.items():
 		if matches(topic, a_filter):
-			send_to_clients(a_filter, packet.build())
+			send_to_clients(a_filter, packet)
 
 def subscribe_callback(client, packet):
 	topic = str(packet.Topic)
@@ -106,7 +115,17 @@ def subscribe_callback(client, packet):
 	        if "/+" not in topic and "+/" not in topic:
 	            # [MQTT-4.7.1-3] + wildcard character must occupy entire level
 	            return
+
 	add_subscription(packet.Topic, client, packet.GrantedQoS)
+
+	for topic_retained, v in retained_messages.items():
+		if matches(topic_retained, topic):
+			logger.debug('SUBSCRIBE: matches(topic_retained, topic)')
+			pending_retained_message = retained_messages[topic_retained]
+			if pending_retained_message:
+				send(client, pending_retained_message[0])
+		else:
+			logger.debug('SUBSCRIBE: NOT matches(topic, a_filter): ' + str(topic_retained) + ' and ' + str(topic))
 
 def disconnect_callback(client, packet):
 	session = sessions[client]
@@ -125,6 +144,15 @@ def disconnect_callback(client, packet):
 #	else:
 #		return None
 
+def add_retained_message(topic, packet, qos):
+	retained_messages[topic] = (packet, qos)
+	logger.debug('added retained message for topic ' + str(topic) + ': ' + str(retained_messages[topic]))
+
+def delete_retained_message(topic):
+	if topic in retained_messages:
+		logger.debug('deleting retained message for topic ' + str(topic))
+		del retained_messages[topic]
+
 def add_subscription(topic, client, qos):
 	if topic in subscriptions:
 		delete_subscription(topic, client)
@@ -142,7 +170,11 @@ def delete_subscription(topic, client):
 def send_to_clients(topic, packet):
 	if topic in subscriptions:
 		for client in subscriptions[topic]:
-			client[0].send(packet)
+			send(client[0], packet)
+
+def send(client, packet):
+	logger.debug('Sending packet to client ' + str(client))
+	client.send(packet.build())
 
 def create_session(clean_session, client, client_id):
 	new_session = Session(clean_session, client, client_id)
@@ -171,6 +203,5 @@ def matches(topic, a_filter):
 		return a_filter == topic
 	else:
 		# else use regex
-		match_pattern = re.compile(a_filter.replace('#', '.*')
-			.replace('$', '\$').replace('+', '[/\$\s\w\d]+'))
+		match_pattern = re.compile(a_filter.replace('#', '.*').replace('$', '\$').replace('+', '[/\$\s\w\d]+'))
 		return match_pattern.match(topic)
