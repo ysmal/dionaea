@@ -211,7 +211,7 @@ class mqttd(connection):
 			elif subscribe:
 				subscribe_callback(self, x)
 			elif disconnect:
-				disconnect_callback(x)
+				disconnect_callback(self, x)
 				
 		return len(data)
 
