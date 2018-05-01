@@ -88,6 +88,7 @@ def subscribe_callback(client, packet):
 
 def disconnect_callback(client, packet):
 	session = sessions[client]
+	client_id = session.client_id
 	if session.last_will is not None:
 		# TODO: Handle last will (topic, message) (Disconnect from the broker cleanly. Using
 		# disconnect() will not result in a will message being sent by the broker.)
@@ -96,7 +97,7 @@ def disconnect_callback(client, packet):
 		pass
 	if session.clean_session:
 		# Must delete the state for this client
-		delete_session(client)
+		delete_session(client, client_id)
 	logger.debug('Sessions: \n' + str(sessions))
 
 #def get_clients(topic):
@@ -115,7 +116,7 @@ def create_session(clean_session, client, client_id):
 	sessions[client] = new_session
 	return new_session
 
-def delete_session(client):
+def delete_session(client, client_id):
 	# TODO: Delete subscriptions
 	# logger.debug("Deleting session %s subscriptions" % repr(session.client_id))
 
