@@ -2,6 +2,7 @@ import logging
 
 from dionaea.mqtt.include.packets import *
 from dionaea.mqtt.include.packets import *
+from dionaea.mqtt.utils import *
 
 logger = logging.getLogger('mqtt')
 
