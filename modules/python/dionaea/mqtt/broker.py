@@ -27,7 +27,7 @@ class Session(object):
 def connect_callback(client, packet):
 	client_id 	  = str(packet.ClientID)
 	clean_session = packet.ConnectFlags & 2**2 != 0 # clean_session = TRUE
-	# clean_session = packet.ConnectFlags & 2**1 != 0 # clean_session = FALSE
+	#clean_session = packet.ConnectFlags & 2**1 != 0 # clean_session = FALSE
 	logger.debug('clean_session = ' + str(clean_session))
 	last_will 	  = packet.ConnectFlags & CONNECT_WILL
 	username 	  = packet.Username
@@ -42,6 +42,7 @@ def connect_callback(client, packet):
 			if existing_client:
 				# Client already has an existing session
 				delete_session(existing_client, client_id)
+				session = create_session(True, client, client_id)
 			else:
 				# Client doesn't have an existing session
 				session = create_session(True, client, client_id)
@@ -50,17 +51,19 @@ def connect_callback(client, packet):
 			client_id = gen_client_id()
 			session = create_session(True, client, client_id)
 	else:
+		existing_client = existing_client_id(client_id)
 		# Client wants a persistent session
-		if client_id is None or existing_client_id(client_id):
+		if client_id is None:
 			# TODO: Zero-byte client_id or client_id already exist, respond with CONNACK and 
 			# return code 0x02 (Identifier rejected) and then close the network connection.
 			pass
-		elif client not in sessions:
+		elif existing_client is None:
 			# Client never establish a session before
 			session = create_session(False, client, client_id)
 		else:
-			# Client already has a session, do nothing
-			pass
+			# Client already has a session
+			sessions[client] = sessions.pop(existing_client)
+			session = sessions[client]
 
 	if last_will:
 		topic = packet.WillTopic
@@ -89,6 +92,7 @@ def subscribe_callback(client, packet):
 
 def disconnect_callback(client, packet):
 	session = sessions[client]
+	client_id = session.client_id
 	if session.last_will is not None:
 		# TODO: Handle last will (topic, message) (Disconnect from the broker cleanly. Using
 		# disconnect() will not result in a will message being sent by the broker.)
@@ -97,8 +101,8 @@ def disconnect_callback(client, packet):
 		pass
 	if session.clean_session:
 		# Must delete the state for this client
-		delete_session(client)
-	logger.debug('Sessions: ' + str(sessions))
+		delete_session(client, client_id)
+	logger.debug('Sessions: \n' + str(sessions))
 
 #def get_clients(topic):
 #	if topic in subscriptions:
@@ -116,7 +120,7 @@ def create_session(clean_session, client, client_id):
 	sessions[client] = new_session
 	return new_session
 
-def delete_session(client):
+def delete_session(client, client_id):
 	# TODO: Delete subscriptions
 	# logger.debug("Deleting session %s subscriptions" % repr(session.client_id))
 
@@ -126,5 +130,5 @@ def delete_session(client):
 def existing_client_id(client_id):
 	for k, v in sessions.items():
 		if v.client_id == client_id:
-			return True
-	return False
+			return k
+	return None
