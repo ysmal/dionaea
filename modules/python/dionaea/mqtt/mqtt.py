@@ -87,6 +87,8 @@ class mqttd(connection):
 
 				logger.warn('CONNECT MESSAGE RECEIVED')
 
+				logger.debug('\nDATA = ' + str(data) + '\n')
+
 				i = incident("dionaea.modules.python.mqtt.connect")
 				i.con = self
 				i.clientid = x.ClientID

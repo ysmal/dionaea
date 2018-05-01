@@ -17,34 +17,31 @@ class Session(object):
 
 
 def connect_callback(packet):
-	clean_session = packet.ConnectFlags #& 1 != 0
+	logger.debug('packet.ConnectFlags = ' + str(packet.ConnectFlags))
+	clean_session = packet.ConnectFlags & 2**1 != 0
 	logger.debug('clean_session = ' + str(clean_session))
 
 def publish_callback(packet):
-	logger.debug('Sending to clients having port: ' + ' AND '.join(str(c.remote.port) for c in get_clients(packet.Topic)))
+	logger.warn('LIST OF TOPICS :' + str(subscriptions))
 	send_to_clients(packet.Topic, packet.build())
 
 def subscribe_callback(client, packet):
-	logger.debug('SUBSCRIPTION')
 	if packet.Topic in subscriptions:
-		if (client,_) in subscriptions[packet.Topic]:
-			subscriptions[packet.Topic].remove((client,_))
-			subscriptions[packet.Topic].add((client, packet.GrantedQoS))
-		else:
-			subscriptions[packet.Topic].add((client, packet.GrantedQoS))
+		#subscriptions[packet.Topic] = [i for i in subscriptions[packet.Topic] if (i[0].remote.host == client.remote.host and i[0].remote.port == client.remote.port)] #Si client déjà abonné à ce topic, on le retire
+		subscriptions[packet.Topic].add((client, packet.GrantedQoS))
 	else:
 		subscriptions[packet.Topic] = {(client, packet.GrantedQoS)}
 
 def disconnect_callback(packet):
 	pass
 
-def get_clients(topic):
-	if topic in subscripions:
-		return subscriptions[topic]
-	else:
-		return None
+#def get_clients(topic):
+#	if topic in subscriptions:
+#		return [i[0] for i in subscriptions[topic]]			#Crée une liste des premiers éléments des tuples
+#	else:
+#		return None
 
 def send_to_clients(topic, packet):
 	if topic in subscriptions:
 		for client in subscriptions[topic]:
-			client.send(packet)
+			client[0].send(packet)
