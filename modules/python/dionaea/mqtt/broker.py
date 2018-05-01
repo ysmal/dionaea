@@ -26,8 +26,8 @@ class Session(object):
 
 def connect_callback(client, packet):
 	client_id 	  = str(packet.ClientID)
-	clean_session = packet.ConnectFlags & 2**2 != 0 # clean_session = TRUE
-	# clean_session = packet.ConnectFlags & 2**1 != 0 # clean_session = FALSE
+	# clean_session = packet.ConnectFlags & 2**2 != 0 # clean_session = TRUE
+	clean_session = packet.ConnectFlags & 2**1 != 0 # clean_session = FALSE
 	logger.debug('clean_session = ' + str(clean_session))
 	last_will 	  = packet.ConnectFlags & CONNECT_WILL
 	username 	  = packet.Username
@@ -50,17 +50,19 @@ def connect_callback(client, packet):
 			client_id = gen_client_id()
 			session = create_session(True, client, client_id)
 	else:
+		existing_client = existing_client_id(client_id)
 		# Client wants a persistent session
-		if client_id is None or existing_client_id(client_id):
+		if client_id is None:
 			# TODO: Zero-byte client_id or client_id already exist, respond with CONNACK and 
 			# return code 0x02 (Identifier rejected) and then close the network connection.
 			pass
-		elif client not in sessions:
+		elif existing_client is None:
 			# Client never establish a session before
 			session = create_session(False, client, client_id)
 		else:
-			# Client already has a session, do nothing
-			pass
+			# Client already has a session
+			sessions[client] = sessions.pop(existing_client)
+			session = sessions[client]
 
 	if last_will:
 		topic = packet.WillTopic
@@ -95,7 +97,7 @@ def disconnect_callback(client, packet):
 	if session.clean_session:
 		# Must delete the state for this client
 		delete_session(client)
-	logger.debug('Sessions: ' + str(sessions))
+	logger.debug('Sessions: \n' + str(sessions))
 
 #def get_clients(topic):
 #	if topic in subscriptions:
@@ -123,5 +125,5 @@ def delete_session(client):
 def existing_client_id(client_id):
 	for k, v in sessions.items():
 		if v.client_id == client_id:
-			return True
-	return False
+			return k
+	return None
