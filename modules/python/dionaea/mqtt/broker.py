@@ -65,12 +65,15 @@ def connect_callback(client, packet):
 		session.password = password
 
 def publish_callback(packet):
+	logger.warn('LIST OF SESSIONS :')
+	for key, value in sessions.items():
+		logger.warn(str(key))
 	logger.warn('LIST OF TOPICS :' + str(subscriptions))
 	send_to_clients(packet.Topic, packet.build())
 
 def subscribe_callback(client, packet):
 	if packet.Topic in subscriptions:
-		#subscriptions[packet.Topic] = [i for i in subscriptions[packet.Topic] if (i[0].remote.host == client.remote.host and i[0].remote.port == client.remote.port)] #Si client déjà abonné à ce topic, on le retire
+		subscriptions[packet.Topic] = {i for i in subscriptions[packet.Topic] if sessions[i[0]].client_id != sessions[client].client_id} #Si client déjà abonné à ce topic, on le retire
 		subscriptions[packet.Topic].add((client, packet.GrantedQoS))
 	else:
 		subscriptions[packet.Topic] = {(client, packet.GrantedQoS)}
