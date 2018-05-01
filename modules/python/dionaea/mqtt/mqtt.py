@@ -135,7 +135,8 @@ class mqttd(connection):
 
 				x = MQTT_Publish_Release(data)
 
-			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PUBLISH:
+			elif ( (self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PUBLISH) or # Added
+				(self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH == 48) ):
 				logger.warn('PUBLISH MESSAGE RECEIVED')
 
 				x = MQTT_Publish(data)
@@ -190,6 +191,9 @@ class mqttd(connection):
 				x = MQTT_DisconnectReq(data)
 
 				disconnect = True
+
+			else:
+				logger.debug('self.pendingPacketType == ' + str(self.pendingPacketType))
 
 			self.buf = b''
 			x.show()
