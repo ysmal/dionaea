@@ -85,8 +85,6 @@ class mqttd(connection):
 
 				logger.warn('CONNECT MESSAGE RECEIVED')
 
-				logger.debug('\nDATA = ' + str(data) + '\n')
-
 				i = incident("dionaea.modules.python.mqtt.connect")
 				i.con = self
 				i.clientid = x.ClientID
@@ -204,14 +202,13 @@ class mqttd(connection):
 				self.send(r.build()) # Send the building each layer of the MQTT packet
 
 			if connect:
-				logger.debug('BEFORE connect_callback()')
 				connect_callback(self, x)
 			elif publish:
 				publish_callback(x)
 			elif subscribe:
 				subscribe_callback(self, x)
 			elif disconnect:
-				disconnect_callback(x)
+				disconnect_callback(self, x)
 				
 		return len(data)
 
