@@ -15,29 +15,30 @@ class Session(object):
 		self.client = client
 		self.client_id = client_id
 		self.clean_session = clean_session
-		self.subscriptions = dict()
+		self.subscriptions = list()
 		self.undelivered_messages = dict()
-		self.last_will = None
-		self.username = None
-		self.password = None
-
-	def add_subscription(topic):
-		if topic not in subscriptions:
-			self.subscriptions[topic] = {'qos1': {}, 'qos2': {}}
+		self.is_connected = True
+		# self.last_will = None
+		# self.username = None
+		# self.password = None
 
 def connect_callback(client, packet):
 	client_id 	  = str(packet.ClientID)
-	clean_session = packet.ConnectFlags & 2**2 != 0 # clean_session = TRUE
-	#clean_session = packet.ConnectFlags & 2**1 != 0 # clean_session = FALSE
+	#clean_session = packet.ConnectFlags & 2**2 != 0 # clean_session = TRUE
+	clean_session = packet.ConnectFlags & 2**1 != 0 # clean_session = FALSE
 	logger.debug('clean_session = ' + str(clean_session))
-	last_will 	  = packet.ConnectFlags & CONNECT_WILL
-	username 	  = packet.Username
-	password 	  = packet.Password
+	# last_will	  = packet.ConnectFlags & CONNECT_WILL
+	# username 	  = packet.Username
+	# password 	  = packet.Password
 	session 	  = None
 
 	if clean_session:
 		# No session state needs to be cached for this client after disconnection
-		if client_id is not None and client_id != "":
+		if client_id is None or client_id != "":
+			# No client_id specified, generates one
+			client_id = gen_client_id()
+			session = create_session(True, client, client_id)
+		else:
 			# Specified client_id is valid
 			existing_client = existing_client_id(client_id)
 			if existing_client:
@@ -47,33 +48,38 @@ def connect_callback(client, packet):
 			else:
 				# Client doesn't have an existing session
 				session = create_session(True, client, client_id)
-		else:
-			# No client_id specified, generates one
-			client_id = gen_client_id()
-			session = create_session(True, client, client_id)
 	else:
-		existing_client = existing_client_id(client_id)
 		# Client wants a persistent session
+		existing_client = existing_client_id(client_id)
 		if client_id is None:
-			# TODO: Zero-byte client_id or client_id already exist, respond with CONNACK and 
-			# return code 0x02 (Identifier rejected) and then close the network connection.
+			# TODO: Zero-byte client_id, respond with CONNACK and return code 0x02
+			# (Identifier rejected) and then close the network connection.
 			pass
 		elif existing_client is None:
 			# Client never establish a session before
 			session = create_session(False, client, client_id)
 		else:
-			# Client already has a session
-			sessions[client] = sessions.pop(existing_client)
-			session = sessions[client]
+			# A client already has this client_id in a saved session
+			if sessions[existing_client].is_connected:
+				# client_id already in use by another client, respond with CONNACK and return
+				# code 0x02 (Identifier rejected) and then close the network connection.
+				pass
+			else:
+				# client_id not in use by another client,
+				# should the one from this client.
+				sessions[client] = sessions.pop(existing_client)
+				session = sessions[client]
 
-	if last_will:
-		topic = packet.WillTopic
-		message = packet.WillMessage
-		session.last_will = (topic, message)
+	# TODO
+	# if last_will:
+	# 	topic = packet.WillTopic
+	# 	message = packet.WillMessage
+	# 	session.last_will = (topic, message)
 
-	if username is not None and password is not None:
-		session.username = username
-		session.password = password
+	# TODO
+	# if username is not None and password is not None:
+	# 	session.username = username
+	# 	session.password = password
 
 	logger.debug('Sessions: \n' + str(sessions))
 
@@ -95,24 +101,17 @@ def subscribe_callback(client, packet):
 	        if "/+" not in topic and "+/" not in topic:
 	            # [MQTT-4.7.1-3] + wildcard character must occupy entire level
 	            return
-	if packet.Topic in subscriptions:
-		subscriptions[packet.Topic] = {i for i in subscriptions[packet.Topic] if sessions[i[0]].client_id != sessions[client].client_id} #Si client déjà abonné à ce topic, on le retire
-		subscriptions[packet.Topic].add((client, packet.GrantedQoS))
-	else:
-		subscriptions[packet.Topic] = {(client, packet.GrantedQoS)}
+	add_subscription(packet.Topic, client, packet.GrantedQoS)
 
 def disconnect_callback(client, packet):
 	session = sessions[client]
 	client_id = session.client_id
-	if session.last_will is not None:
-		# TODO: Handle last will (topic, message) (Disconnect from the broker cleanly. Using
-		# disconnect() will not result in a will message being sent by the broker.)
-		#packet = MQTT_Publish(data)
-		#send_to_clients(topic, packet)
-		pass
 	if session.clean_session:
 		# Must delete the state for this client
 		delete_session(client, client_id)
+	else:
+		# Keep the client state in memory but indicate that client is disconnected
+		session.is_connected = False
 	logger.debug('Sessions: \n' + str(sessions))
 
 #def get_clients(topic):
@@ -120,6 +119,20 @@ def disconnect_callback(client, packet):
 #		return [i[0] for i in subscriptions[topic]]			#Crée une liste des premiers éléments des tuples
 #	else:
 #		return None
+
+def add_subscription(topic, client, qos):
+	if topic in subscriptions:
+		delete_subscription(topic, client)
+		subscriptions[topic].add((client, qos))
+	else:
+		subscriptions[topic] = {(client, qos)}
+	# Save subscription in client state
+	sessions[client].subscriptions.append(topic)
+	logger.debug('Subscriptions for client ' + str(client) + ': ' + str(sessions[client].subscriptions))
+
+def delete_subscription(topic, client):
+	subscriptions[topic] = {i for i in subscriptions[topic] 
+	if sessions[i[0]].client_id != sessions[client].client_id}
 
 def send_to_clients(topic, packet):
 	if topic in subscriptions:
@@ -132,9 +145,10 @@ def create_session(clean_session, client, client_id):
 	return new_session
 
 def delete_session(client, client_id):
-	# TODO: Delete subscriptions
-	# logger.debug("Deleting session %s subscriptions" % repr(session.client_id))
-
+	# Delete subscriptions
+	subs = sessions[client].subscriptions
+	for topic in subs:
+		delete_subscription(topic, client)
 	# Delete session
 	del sessions[client]
 
