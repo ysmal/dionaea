@@ -62,7 +62,7 @@ def connect_callback(client, packet):
 		else:
 			# A client already has this client_id in a saved session
 			if sessions[existing_client].is_connected:
-				# client_id already in use by another client, respond with CONNACK and return
+				# TODO: client_id already in use by another client, respond with CONNACK and return
 				# code 0x02 (Identifier rejected) and then close the network connection.
 				pass
 			else:
@@ -85,11 +85,15 @@ def connect_callback(client, packet):
 	logger.debug('Sessions: \n' + str(sessions))
 
 def publish_callback(packet):
-	#logger.warn('LIST OF SESSIONS :')
-	#for key, value in sessions.items():
-	#	logger.warn(str(key))
-	logger.warn('LIST OF TOPICS :' + str(subscriptions))
-	send_to_clients(packet.Topic, packet.build())
+	topic 	 = packet.Topic
+	message  = packet.Message
+	retained = packet.HeaderFlags & 2**0 != 0
+	if retained:
+		# TODO
+		pass
+	for a_filter, v in subscriptions.items():
+		if matches(topic, a_filter):
+			send_to_clients(a_filter, packet.build())
 
 def subscribe_callback(client, packet):
 	topic = str(packet.Topic)
@@ -161,10 +165,13 @@ def existing_client_id(client_id):
 	return None
 
 def matches(topic, a_filter):
-        if "#" not in a_filter and "+" not in a_filter:
-            # if filter doesn't contain wildcard, return exact match
-            return a_filter == topic
-        else:
-            # else use regex
-            match_pattern = re.compile(a_filter.replace('#', '.*').replace('$', '\$').replace('+', '[/\$\s\w\d]+'))
-            return match_pattern.match(topic)
+	topic = str(topic)
+	a_filter = str(a_filter)
+	if "#" not in a_filter and "+" not in a_filter:
+		# if filter doesn't contain wildcard, return exact match
+		return a_filter == topic
+	else:
+		# else use regex
+		match_pattern = re.compile(a_filter.replace('#', '.*')
+			.replace('$', '\$').replace('+', '[/\$\s\w\d]+'))
+		return match_pattern.match(topic)
