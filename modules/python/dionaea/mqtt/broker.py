@@ -3,6 +3,7 @@ import re
 
 from dionaea.mqtt.include.packets import *
 from dionaea.mqtt.include.packets import *
+from dionaea.mqtt.utils import *
 
 logger = logging.getLogger('mqtt')
 
@@ -92,6 +93,7 @@ def publish_callback(packet):
 
 def subscribe_callback(client, packet):
 	topic = str(packet.Topic)
+	logger.warn('TOPIC : ' + topic)
 	# Check valid use of wildcards
 	if '#' in topic and not topic.endswith('#'):
 	    # [MQTT-4.7.1-2] Wildcard character '#' is only allowed as last character in filter
