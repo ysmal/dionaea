@@ -200,6 +200,7 @@ class mqttd(connection):
 
 			else:
 				logger.debug('self.pendingPacketType == ' + str(self.pendingPacketType))
+				return 0
 
 			self.buf = b''
 			x.show()
@@ -210,6 +211,7 @@ class mqttd(connection):
 			if r:
 				r.show()
 				s = r.build()
+				logger.warn(str(s))
 				self.send(r.build()) # Send the building each layer of the MQTT packet
 
 			if connect:
@@ -260,6 +262,7 @@ class mqttd(connection):
 
 		elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 			((PacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) == 2) ) :
+			logger.warn("PUBLISH ACK QOS1")
 			l = p.getlayer(MQTT_Publish)
 			packetidentifier = l.PacketIdentifier
 			if (packetidentifier is not None):
@@ -268,6 +271,7 @@ class mqttd(connection):
 
 		elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 			((PacketType & MQTT_CONTROLMESSAGE_TYPE_QoS2) == 4) ) :
+			logger.warn("PUBLISH REC")
 			l = p.getlayer(MQTT_Publish)
 			packetidentifier = l.PacketIdentifier
 			if (packetidentifier is not None):
@@ -277,9 +281,11 @@ class mqttd(connection):
 
 		elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 			((PacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) == 0) ) :
+			logger.warn("PUBLISH ACK QOS0")
 			r = None
 
 		elif (PacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISHREL) == 96:
+			logger.warn("PUBLISH REL")
 			l = p.getlayer(MQTT_Publish_Release)
 			packetidentifier = l.PacketIdentifier
 			if (packetidentifier is not None):
