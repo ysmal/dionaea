@@ -58,10 +58,11 @@ class mqttd(connection):
 		if len(data) > l:
 			p = None
 			x = None
-			connect = False
-			publish = False
-			subscribe = False
-			disconnect = False
+			connect 	= False
+			publish 	= False
+			subscribe 	= False
+			unsubscribe = False
+			disconnect 	= False
 
 			try:
 
@@ -151,7 +152,7 @@ class mqttd(connection):
 
 				i.report()
 
-			elif self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE == 128 :
+			elif self.pendingPacketType & 240 == MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE :
 				x = MQTT_Subscribe(data)
 
 				if x.GrantedQoS == 0:
@@ -169,6 +170,21 @@ class mqttd(connection):
 				subscribe = True
 
 				i.report()
+
+			elif self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_UNSUBSCRIBE == 162:
+				logger.warn('UNSUBSCRIBE MESSAGE RECEIVED')
+
+				x = MQTT_Subscribe(data)
+
+				# TODO
+				# i = incident("dionaea.modules.python.mqtt.unsubscribe")
+				# i.con = self
+				# i.subscribemessageid = x.PacketIdentifier
+				# i.subscribetopic = x.Topic
+
+				unsubscribe = True
+
+				# i.report()
 
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PINGREQ:
 				logger.warn('PINGREQ MESSAGE RECEIVED')
@@ -202,6 +218,8 @@ class mqttd(connection):
 				publish_callback(x)
 			elif subscribe:
 				subscribe_callback(self, x)
+			elif unsubscribe:
+				unsubscribe_callback(self, x)
 			elif disconnect:
 				disconnect_callback(self, x)
 				

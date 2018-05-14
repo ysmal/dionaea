@@ -18,7 +18,7 @@ class Session(object):
 		self.client = client
 		self.client_id = client_id
 		self.clean_session = clean_session
-		self.subscriptions = list()
+		self.subscriptions = set()
 		self.undelivered_messages = dict()
 		self.is_connected = True
 		# self.last_will = None
@@ -110,6 +110,7 @@ def subscribe_callback(client, packet):
 
 	# Check valid use of wildcards
 	if not valid_topic(topic):
+		logger.debug('Topic: ' + topic + ' not valid')
 		return
 
 	add_subscription(packet.Topic, client, packet.GrantedQoS)
@@ -123,6 +124,17 @@ def subscribe_callback(client, packet):
 		else:
 			logger.debug('SUBSCRIBE: NOT matches(topic, a_filter): ' 
 				+ str(topic_retained) + ' and ' + str(topic))
+
+def unsubscribe_callback(client, packet):
+	logger.debug('in unsubscribe_callback')
+	topic = str(packet.Topic)
+
+	# Check valid use of wildcards
+	if not valid_topic(topic):
+		logger.debug('Topic: ' + topic + ' not valid')
+		return
+
+	delete_subscription(packet.Topic, client)
 
 def disconnect_callback(client, packet):
 	session = sessions[client]
@@ -167,13 +179,20 @@ def add_subscription(topic, client, qos):
 	else:
 		subscriptions[topic] = {(client, qos)}
 	# Save subscription in client state
-	sessions[client].subscriptions.append(topic)
-	logger.debug('Subscriptions for client ' + str(client) + ': ' 
-		+ str(sessions[client].subscriptions))
+	sessions[client].subscriptions.add(topic)
+	logger.debug('Added subscription: ' + str(topic) + ' for client ' 
+		+ str(client))
 
 def delete_subscription(topic, client):
-	subscriptions[topic] = {i for i in subscriptions[topic] 
+	if topic not in subscriptions:
+		logger.debug('Topic not in *subscriptions*')
+		return
+	subscriptions[topic] = {i for i in subscriptions[topic]
 	if sessions[i[0]].client_id != sessions[client].client_id}
+	# Delete subscription in client state
+	sessions[client].subscriptions.remove(topic)
+	logger.debug('Deleted subscription: ' + str(topic) + ' for client ' 
+		+ str(client))
 
 def send_to_clients(topic, packet):
 	if topic in subscriptions:
@@ -212,5 +231,7 @@ def matches(topic, a_filter):
 	else:
 		# else use regex
 		match_pattern = re.compile(a_filter.replace('#', '.*')
+			.replace('$', '\$').replace('+', '[/\$\s\w\d]+'))
+		topic_pattern = re.compile(topic.replace('#', '.*')
 			.replace('$', '\$').replace('+', '[/\$\s\w\d]+'))
 		return match_pattern.match(topic)
