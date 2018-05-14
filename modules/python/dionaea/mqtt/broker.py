@@ -35,43 +35,44 @@ def connect_callback(client, packet):
 	# password 	  = packet.Password
 	session 	  = None
 
+	existing_client = existing_client_id(client_id)
+
 	if clean_session:
 		# No session state needs to be cached for this client after disconnection
-		if client_id is None or client_id != "":
+		if client_id is None or client_id == "":
 			# No client_id specified, generates one
 			client_id = gen_client_id()
 			session = create_session(True, client, client_id)
+		elif existing_client:
+			# Client already has an existing session
+			delete_session(existing_client, client_id)
+			session = create_session(True, client, client_id)
 		else:
-			# Specified client_id is valid
-			existing_client = existing_client_id(client_id)
-			if existing_client:
-				# Client already has an existing session
-				delete_session(existing_client, client_id)
-				session = create_session(True, client, client_id)
-			else:
-				# Client doesn't have an existing session
-				session = create_session(True, client, client_id)
+			# Client doesn't have an existing session
+			session = create_session(True, client, client_id)
 	else:
 		# Client wants a persistent session
-		existing_client = existing_client_id(client_id)
-		if client_id is None:
+		if client_id is None or client_id == "":
 			# TODO: Zero-byte client_id, respond with CONNACK and return code 0x02
 			# (Identifier rejected) and then close the network connection.
+			logger.debug('client_id is None or client_id != ""')
 			pass
 		elif existing_client is None:
 			# Client never establish a session before
+			logger.debug('Client never establish a session before')
 			session = create_session(False, client, client_id)
-		else:
+		elif sessions[existing_client].is_connected:
 			# A client already has this client_id in a saved session
-			if sessions[existing_client].is_connected:
-				# TODO: client_id already in use by another client, respond with CONNACK and return
-				# code 0x02 (Identifier rejected) and then close the network connection.
-				pass
-			else:
-				# client_id not in use by another client,
-				# should the one from this client.
-				sessions[client] = sessions.pop(existing_client)
-				session = sessions[client]
+			# TODO: client_id already in use by another client, respond with CONNACK and return
+			# code 0x02 (Identifier rejected) and then close the network connection.
+			logger.debug('A client already has this client_id in a saved session')
+			pass
+		else:
+			# client_id not in use by another client,
+			# should the one from this client.
+			logger.debug('client_id existing and not in use by another client')
+			sessions[client] = sessions.pop(existing_client)
+			session = sessions[client]
 
 	# TODO
 	# if last_will:
