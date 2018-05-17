@@ -206,16 +206,8 @@ class mqttd(connection):
 			x.show()
 
 			r = None
-			r = self.process(self.pendingPacketType, x)
-
-			if r:
-				r.show()
-				s = r.build()
-				logger.warn(str(s))
-				self.send(r.build()) # Send the building each layer of the MQTT packet
-
 			if connect:
-				connect_callback(self, x)
+				r = connect_callback(self, x)
 			elif publish:
 				publish_callback(x)
 			elif subscribe:
@@ -224,6 +216,17 @@ class mqttd(connection):
 				unsubscribe_callback(self, x)
 			elif disconnect:
 				disconnect_callback(self, x)
+
+			if r:
+				logger.debug('Identifier rejected, return code 0x02')
+			else:
+				r = self.process(self.pendingPacketType, x)
+
+			if r:
+				r.show()
+				s = r.build()
+				logger.warn(str(s))
+				self.send(r.build()) # Send the building each layer of the MQTT packet
 				
 		return len(data)
 

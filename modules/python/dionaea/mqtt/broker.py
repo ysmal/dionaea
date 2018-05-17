@@ -53,26 +53,30 @@ def connect_callback(client, packet):
 	else:
 		# Client wants a persistent session
 		if client_id is None or client_id == "":
-			# TODO: Zero-byte client_id, respond with CONNACK and return code 0x02
+			# Zero-byte client_id, respond with CONNACK and return code 0x02
 			# (Identifier rejected) and then close the network connection.
 			logger.debug('client_id is None or client_id != ""')
-			pass
+			r = MQTT_ConnectACK()
+			r.ConnectionACK = 0x02
+			return r
 		elif existing_client is None:
 			# Client never establish a session before
 			logger.debug('Client never establish a session before')
 			session = create_session(False, client, client_id)
 		elif sessions[existing_client].is_connected:
-			# A client already has this client_id in a saved session
-			# TODO: client_id already in use by another client, respond with CONNACK and return
+			# A client already has this client_id in a saved session, return
 			# code 0x02 (Identifier rejected) and then close the network connection.
 			logger.debug('A client already has this client_id in a saved session')
-			pass
+			r = MQTT_ConnectACK()
+			r.ConnectionACK = 0x02
+			return r
 		else:
 			# client_id not in use by another client,
 			# should the one from this client.
 			logger.debug('client_id existing and not in use by another client')
 			sessions[client] = sessions.pop(existing_client)
 			session = sessions[client]
+	return None
 
 	# TODO
 	# if last_will:
