@@ -58,10 +58,11 @@ class mqttd(connection):
 		if len(data) > l:
 			p = None
 			x = None
-			connect = False
-			publish = False
-			subscribe = False
-			disconnect = False
+			connect 	= False
+			publish 	= False
+			subscribe 	= False
+			unsubscribe = False
+			disconnect 	= False
 
 			try:
 
@@ -170,6 +171,21 @@ class mqttd(connection):
 
 				i.report()
 
+			elif self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_UNSUBSCRIBE == 162:
+				logger.warn('UNSUBSCRIBE MESSAGE RECEIVED')
+
+				x = MQTT_Unsubscribe(data)
+
+				# TODO
+				# i = incident("dionaea.modules.python.mqtt.unsubscribe")
+				# i.con = self
+				# i.subscribemessageid = x.PacketIdentifier
+				# i.subscribetopic = x.Topic
+
+				unsubscribe = True
+
+				# i.report()
+
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PINGREQ:
 				logger.warn('PINGREQ MESSAGE RECEIVED')
 
@@ -190,22 +206,27 @@ class mqttd(connection):
 			x.show()
 
 			r = None
-			r = self.process(self.pendingPacketType, x)
+			if connect:
+				r = connect_callback(self, x)
+			elif publish:
+				publish_callback(x)
+			elif subscribe:
+				subscribe_callback(self, x)
+			elif unsubscribe:
+				unsubscribe_callback(self, x)
+			elif disconnect:
+				disconnect_callback(self, x)
+
+			if r:
+				logger.debug('Identifier rejected, return code 0x02')
+			else:
+				r = self.process(self.pendingPacketType, x)
 
 			if r:
 				r.show()
 				s = r.build()
 				logger.warn(str(s))
 				self.send(r.build()) # Send the building each layer of the MQTT packet
-
-			if connect:
-				connect_callback(self, x)
-			elif publish:
-				publish_callback(x)
-			elif subscribe:
-				subscribe_callback(self, x)
-			elif disconnect:
-				disconnect_callback(self, x)
 				
 		return len(data)
 
@@ -224,6 +245,14 @@ class mqttd(connection):
 
 		#elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE) == 128) &
 		#	((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
+
+		elif PacketType & MQTT_CONTROLMESSAGE_TYPE_UNSUBSCRIBE == 162:
+			l = p.getlayer(MQTT_Unsubscribe)
+			packetidentifier = l.PacketIdentifier
+			r = MQTT_UnsubscribeACK_Identifier()
+			if (packetidentifier is not None):
+				r.PacketIdentifier = packetidentifier
+				# r.PacketIdentifier == 1
 
 		elif PacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE == 128:
 			l = p.getlayer(MQTT_Subscribe)

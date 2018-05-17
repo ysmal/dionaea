@@ -18,7 +18,7 @@ class Session(object):
 		self.client = client
 		self.client_id = client_id
 		self.clean_session = clean_session
-		self.subscriptions = list()
+		self.subscriptions = set()
 		self.undelivered_messages = dict()
 		self.is_connected = True
 		# self.last_will = None
@@ -53,26 +53,30 @@ def connect_callback(client, packet):
 	else:
 		# Client wants a persistent session
 		if client_id is None or client_id == "":
-			# TODO: Zero-byte client_id, respond with CONNACK and return code 0x02
+			# Zero-byte client_id, respond with CONNACK and return code 0x02
 			# (Identifier rejected) and then close the network connection.
 			logger.debug('client_id is None or client_id != ""')
-			pass
+			r = MQTT_ConnectACK()
+			r.ConnectionACK = 0x02
+			return r
 		elif existing_client is None:
 			# Client never establish a session before
 			logger.debug('Client never establish a session before')
 			session = create_session(False, client, client_id)
 		elif sessions[existing_client].is_connected:
-			# A client already has this client_id in a saved session
-			# TODO: client_id already in use by another client, respond with CONNACK and return
+			# A client already has this client_id in a saved session, return
 			# code 0x02 (Identifier rejected) and then close the network connection.
 			logger.debug('A client already has this client_id in a saved session')
-			pass
+			r = MQTT_ConnectACK()
+			r.ConnectionACK = 0x02
+			return r
 		else:
 			# client_id not in use by another client,
 			# should the one from this client.
 			logger.debug('client_id existing and not in use by another client')
 			sessions[client] = sessions.pop(existing_client)
 			session = sessions[client]
+	return None
 
 	# TODO
 	# if last_will:
@@ -110,6 +114,7 @@ def subscribe_callback(client, packet):
 
 	# Check valid use of wildcards
 	if not valid_topic(topic):
+		logger.debug('Topic: ' + topic + ' not valid')
 		return
 
 	add_subscription(packet.Topic, client, packet.GrantedQoS)
@@ -123,6 +128,17 @@ def subscribe_callback(client, packet):
 		else:
 			logger.debug('SUBSCRIBE: NOT matches(topic, a_filter): ' 
 				+ str(topic_retained) + ' and ' + str(topic))
+
+def unsubscribe_callback(client, packet):
+	logger.debug('in unsubscribe_callback')
+	topic = str(packet.Topic)
+
+	# Check valid use of wildcards
+	if not valid_topic(topic):
+		logger.debug('Topic: ' + topic + ' not valid')
+		return
+
+	delete_subscription(packet.Topic, client)
 
 def disconnect_callback(client, packet):
 	session = sessions[client]
@@ -167,13 +183,21 @@ def add_subscription(topic, client, qos):
 	else:
 		subscriptions[topic] = {(client, qos)}
 	# Save subscription in client state
-	sessions[client].subscriptions.append(topic)
-	logger.debug('Subscriptions for client ' + str(client) + ': ' 
-		+ str(sessions[client].subscriptions))
+	sessions[client].subscriptions.add(topic)
+	logger.debug('Added subscription: ' + str(topic) + ' for client ' 
+		+ str(client))
 
 def delete_subscription(topic, client):
-	subscriptions[topic] = {i for i in subscriptions[topic] 
+	if topic not in subscriptions:
+		logger.debug('Topic not in *subscriptions*')
+		return
+	subscriptions[topic] = {i for i in subscriptions[topic]
 	if sessions[i[0]].client_id != sessions[client].client_id}
+	# Delete subscription in client state
+	if topic in sessions[client].subscriptions:
+		sessions[client].subscriptions.remove(topic)
+		logger.debug('Deleted subscription: ' + str(topic) + ' for client ' 
+			+ str(client))
 
 def send_to_clients(topic, packet):
 	if topic in subscriptions:
@@ -182,7 +206,8 @@ def send_to_clients(topic, packet):
 
 def send(client, packet):
 	logger.debug('Sending packet to client ' + str(client))
-	client.send(packet.build())
+	if sessions[client].is_connected:
+		client.send(packet.build())
 
 def create_session(clean_session, client, client_id):
 	new_session = Session(clean_session, client, client_id)
@@ -212,5 +237,7 @@ def matches(topic, a_filter):
 	else:
 		# else use regex
 		match_pattern = re.compile(a_filter.replace('#', '.*')
+			.replace('$', '\$').replace('+', '[/\$\s\w\d]+'))
+		topic_pattern = re.compile(topic.replace('#', '.*')
 			.replace('$', '\$').replace('+', '[/\$\s\w\d]+'))
 		return match_pattern.match(topic)
