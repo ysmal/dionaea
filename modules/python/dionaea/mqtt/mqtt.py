@@ -151,7 +151,7 @@ class mqttd(connection):
 
 				i.report()
 
-			elif self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE == 128 :
+			elif self.pendingPacketType & 240 == MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE:
 				x = MQTT_Subscribe(data)
 
 				if x.GrantedQoS == 0:
