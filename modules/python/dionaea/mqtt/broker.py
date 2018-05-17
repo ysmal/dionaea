@@ -194,9 +194,10 @@ def delete_subscription(topic, client):
 	subscriptions[topic] = {i for i in subscriptions[topic]
 	if sessions[i[0]].client_id != sessions[client].client_id}
 	# Delete subscription in client state
-	sessions[client].subscriptions.remove(topic)
-	logger.debug('Deleted subscription: ' + str(topic) + ' for client ' 
-		+ str(client))
+	if topic in sessions[client].subscriptions:
+		sessions[client].subscriptions.remove(topic)
+		logger.debug('Deleted subscription: ' + str(topic) + ' for client ' 
+			+ str(client))
 
 def send_to_clients(topic, packet):
 	if topic in subscriptions:
@@ -205,7 +206,8 @@ def send_to_clients(topic, packet):
 
 def send(client, packet):
 	logger.debug('Sending packet to client ' + str(client))
-	client.send(packet.build())
+	if sessions[client].is_connected:
+		client.send(packet.build())
 
 def create_session(clean_session, client, client_id):
 	new_session = Session(clean_session, client, client_id)
