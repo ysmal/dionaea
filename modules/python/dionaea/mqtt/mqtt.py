@@ -174,7 +174,7 @@ class mqttd(connection):
 			elif self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_UNSUBSCRIBE == 162:
 				logger.warn('UNSUBSCRIBE MESSAGE RECEIVED')
 
-				x = MQTT_Subscribe(data)
+				x = MQTT_Unsubscribe(data)
 
 				# TODO
 				# i = incident("dionaea.modules.python.mqtt.unsubscribe")
@@ -242,6 +242,14 @@ class mqttd(connection):
 
 		#elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE) == 128) &
 		#	((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
+
+		elif PacketType & MQTT_CONTROLMESSAGE_TYPE_UNSUBSCRIBE == 162:
+			l = p.getlayer(MQTT_Unsubscribe)
+			packetidentifier = l.PacketIdentifier
+			r = MQTT_UnsubscribeACK_Identifier()
+			if (packetidentifier is not None):
+				r.PacketIdentifier = packetidentifier
+				# r.PacketIdentifier == 1
 
 		elif PacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE == 128:
 			l = p.getlayer(MQTT_Subscribe)
