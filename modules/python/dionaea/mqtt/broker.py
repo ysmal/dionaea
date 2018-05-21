@@ -202,6 +202,7 @@ def delete_subscription(topic, client):
 def send_to_clients(topic, packet):
 	if topic in subscriptions:
 		for client in subscriptions[topic]:
+			logger.warn('Transfered packet :' +  str(packet) + ' to : ' + str(sessions[client[0]].client_id))
 			send(client[0], packet)
 
 def send(client, packet):

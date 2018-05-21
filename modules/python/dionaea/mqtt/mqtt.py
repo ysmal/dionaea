@@ -225,7 +225,7 @@ class mqttd(connection):
 			if r:
 				r.show()
 				s = r.build()
-				logger.warn(str(s))
+				logger.warn("Sent : " + str(s))
 				self.send(r.build()) # Send the building each layer of the MQTT packet
 				
 		return len(data)
