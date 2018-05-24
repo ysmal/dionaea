@@ -152,12 +152,30 @@ class MQTT_PublishACK_Identifier(Packet):
 		XShortField("PacketIdentifier",0x00),
 	]
 
+class MQTT_Publish_Received(Packet):
+	name="MQTT PUBLISH Received"
+	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_PUBLISHRCV
+	fields_desc =[
+		ByteField("HeaderFlags",0x50),
+		ByteField("MessageLength",0x02),
+		XShortField("PacketIdentifier",0x00),
+	]
+
 class MQTT_Publish_Release(Packet):
 	name="MQTT PUBLISH Release"
 	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_PUBLISHREL
 	fields_desc =[
-		ByteField("HeaderFlags",0x00),
-		ByteField("MessageLength",0x00),
+		ByteField("HeaderFlags",0x62),
+		ByteField("MessageLength",0x02),
+		XShortField("PacketIdentifier",0x00),
+	]
+
+class MQTT_Publish_Complete(Packet):
+	name="MQTT PUBLISH Release"
+	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_PUBLISHCOM
+	fields_desc =[
+		ByteField("HeaderFlags",0x70),
+		ByteField("MessageLength",0x02),
 		XShortField("PacketIdentifier",0x00),
 	]
 
@@ -173,6 +191,16 @@ class MQTT_Subscribe(Packet):
 		ByteField("GrantedQoS",0x00),
 	]
 
+class MQTT_SubscribeACK_Identifier(Packet):
+	name="MQTT Subscribe ACK Identifier"
+	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBEACK
+	fields_desc =[
+		ByteField("HeaderFlags",0x90),
+		ByteField("MessageLength",0x02),
+		XShortField("PacketIdentifier",0x00),
+		ByteField("GrantedQoS",0x00),
+	]
+
 class MQTT_Unsubscribe(Packet):
 	name="MQTT Unsubscribe"
 	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_UNSUBSCRIBE
@@ -184,25 +212,6 @@ class MQTT_Unsubscribe(Packet):
 		StrLenField("Topic",b"",length_from=lambda x:x.TopicLength),
 	]
 
-class MQTT_SubscribeACK(Packet):
-	name="MQTT Subscribe ACK"
-	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBEACK
-	fields_desc =[
-		ByteField("HeaderFlags",0x90),
-		ByteField("MessageLength",0x02),
-		ByteField("GrantedQoS",0x00),
-	]
-
-class MQTT_SubscribeACK_Identifier(Packet):
-	name="MQTT Subscribe ACK Identifier"
-	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBEACK
-	fields_desc =[
-		ByteField("HeaderFlags",0x90),
-		ByteField("MessageLength",0x02),
-		XShortField("PacketIdentifier",0x00),
-		ByteField("GrantedQoS",0x00),
-	]
-
 class MQTT_UnsubscribeACK_Identifier(Packet):
 	name="MQTT Unsubscribe ACK Identifier"
 	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_UNSUBSCRIBEACK
@@ -211,6 +220,16 @@ class MQTT_UnsubscribeACK_Identifier(Packet):
 		ByteField("MessageLength",0x02),
 		XShortField("PacketIdentifier",0x00),
 	]
+
+# -- Not used
+# class MQTT_SubscribeACK(Packet):
+# 	name="MQTT Subscribe ACK"
+# 	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBEACK
+# 	fields_desc =[
+# 		ByteField("HeaderFlags",0x90),
+# 		ByteField("MessageLength",0x02),
+# 		ByteField("GrantedQoS",0x00),
+# 	]
 
 class MQTT_PingRequest(Packet):
 	name="MQTT Ping Request"
