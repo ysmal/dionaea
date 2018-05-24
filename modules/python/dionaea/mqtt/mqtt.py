@@ -52,8 +52,6 @@ class mqttd(connection):
 		l=0
 		size = 0
 		chunk = b''
-
-		#logger.debug('REMOTE -> ' + str(self.remote.host) + ':' + str(self.remote.port))
 		
 		if len(data) > l:
 			p = None
@@ -71,7 +69,7 @@ class mqttd(connection):
 					p.show()
 
 					self.pendingPacketType = p.ControlPacketType
-					logger.warn("MQTT Control Packet Type {}".format(self.pendingPacketType))
+					logger.warn("\n\nMQTT Control Packet Type {}".format(self.pendingPacketType))
 
 				if len(data) == 0:
 					logger.warn("Bad MQTT Packet, Length = 0")
@@ -235,42 +233,43 @@ class mqttd(connection):
 		rp = None
 		
 		if PacketType == MQTT_CONTROLMESSAGE_TYPE_CONNECT:
+			logger.warn("CONNECT ACK")
 			r = MQTT_ConnectACK()
 
 		elif PacketType == MQTT_CONTROLMESSAGE_TYPE_DISCONNECT:
 			r = ''
 
 		elif PacketType == MQTT_CONTROLMESSAGE_TYPE_PINGREQ:
+			logger.warn("PINGREQ")
 			r = MQTT_PingResponse()
 
 		#elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE) == 128) &
 		#	((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
 
 		elif PacketType & MQTT_CONTROLMESSAGE_TYPE_UNSUBSCRIBE == 162:
+			logger.warn("UNSUBSCRIBE ACK")
 			l = p.getlayer(MQTT_Unsubscribe)
 			packetidentifier = l.PacketIdentifier
 			r = MQTT_UnsubscribeACK_Identifier()
 			if (packetidentifier is not None):
 				r.PacketIdentifier = packetidentifier
-				# r.PacketIdentifier == 1
 
 		elif PacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE == 128:
+			logger.warn("SUBSCRIBE ACK")
 			l = p.getlayer(MQTT_Subscribe)
 			packetidentifier = l.PacketIdentifier
 			GrantedQoS = l.GrantedQoS
 			r = MQTT_SubscribeACK_Identifier()
 			if (packetidentifier is not None):
 				r.PacketIdentifier = packetidentifier
-				# r.PacketIdentifier == 1
 			if (GrantedQoS is not None):
 				r.GrantedQoS = GrantedQoS
-				# r.GrantedQoS == 0
+
 		# mqtt-v3.1.1-os.pdf - page 36
 		# For "Publish" Packet, the Response will be varied with the QoS level:
 		# - QoS level 0 - No response packet
 		# - QoS level 1 - PUBACK packet
 		# - QoS level 2 - PUBREC packet
-
 		elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 			((PacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) == 2) ) :
 			logger.warn("PUBLISH ACK QOS1")
@@ -286,7 +285,7 @@ class mqttd(connection):
 			l = p.getlayer(MQTT_Publish)
 			packetidentifier = l.PacketIdentifier
 			if (packetidentifier is not None):
-				r = MQTT_PublishACK_Identifier()
+				r = MQTT_Publish_Received()
 				r.HeaderFlags = MQTT_CONTROLMESSAGE_TYPE_PUBLISHRCV
 				r.PacketIdentifier = packetidentifier
 
@@ -300,7 +299,7 @@ class mqttd(connection):
 			l = p.getlayer(MQTT_Publish_Release)
 			packetidentifier = l.PacketIdentifier
 			if (packetidentifier is not None):
-				r = MQTT_PublishACK_Identifier()
+				r = MQTT_Publish_Release()
 				r.PacketIdentifier = packetidentifier
 				r.HeaderFlags = MQTT_CONTROLMESSAGE_TYPE_PUBLISHCOM
 		else:
