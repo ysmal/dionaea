@@ -299,7 +299,7 @@ class mqttd(connection):
 			l = p.getlayer(MQTT_Publish_Release)
 			packetidentifier = l.PacketIdentifier
 			if (packetidentifier is not None):
-				r = MQTT_Publish_Release()
+				r = MQTT_Publish_Complete()
 				r.PacketIdentifier = packetidentifier
 				r.HeaderFlags = MQTT_CONTROLMESSAGE_TYPE_PUBLISHCOM
 		else:
