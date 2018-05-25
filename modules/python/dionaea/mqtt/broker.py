@@ -21,12 +21,15 @@ class Session(object):
 		self.subscriptions = set()
 		self.undelivered_messages = dict()
 		self.is_connected = True
+		self.hostname = client.local.host
+		self.port = client.local.port
 		# self.last_will = None
 		# self.username = None
 		# self.password = None
 
 def connect_callback(client, packet):
 	client_id 	  = str(packet.ClientID)
+	logger.debug("CLIENT_ID: " + str(client_id))
 	#clean_session = packet.ConnectFlags & 2**2 != 0 # clean_session = TRUE
 	clean_session = packet.ConnectFlags & 2**1 != 0 # clean_session = FALSE
 	logger.debug('clean_session = ' + str(clean_session))
@@ -41,14 +44,17 @@ def connect_callback(client, packet):
 		# No session state needs to be cached for this client after disconnection
 		if client_id is None or client_id == "":
 			# No client_id specified, generates one
+			logger.debug('client_id is None or client_id != ""')
 			client_id = gen_client_id()
 			session = create_session(True, client, client_id)
 		elif existing_client:
 			# Client already has an existing session
+			logger.debug('Client has an ID AND already establish a session before')
 			delete_session(existing_client, client_id)
 			session = create_session(True, client, client_id)
 		else:
 			# Client doesn't have an existing session
+			logger.debug('Client has an ID BUT never establish a session before')
 			session = create_session(True, client, client_id)
 	else:
 		# Client wants a persistent session
@@ -60,10 +66,10 @@ def connect_callback(client, packet):
 			r.ConnectionACK = 0x02
 			return r
 		elif existing_client is None:
-			# Client never establish a session before
+			# Client never established a session before
 			logger.debug('Client never establish a session before')
 			session = create_session(False, client, client_id)
-		elif sessions[existing_client].is_connected:
+		elif not sessions[existing_client].is_connected:
 			# A client already has this client_id in a saved session, return
 			# code 0x02 (Identifier rejected) and then close the network connection.
 			logger.debug('A client already has this client_id in a saved session')
@@ -71,11 +77,22 @@ def connect_callback(client, packet):
 			r.ConnectionACK = 0x02
 			return r
 		else:
-			# client_id not in use by another client,
-			# should the one from this client.
-			logger.debug('client_id existing and not in use by another client')
-			sessions[client] = sessions.pop(existing_client)
-			session = sessions[client]
+			# existing_client is connected
+			logger.debug('client.local.host: ' + str(client.local.host))
+			logger.debug('sessions[existing_client].hostname: ' + str(sessions[existing_client].hostname))
+			if client.local.host == sessions[existing_client].hostname:
+				# Same IP, so should be a client takeover
+				logger.debug('Client takeover')
+				sessions[client] = sessions.pop(existing_client)
+				session = sessions[client]
+				# Replace client in subscriptions
+				replace_client_in_subscriptions(existing_client, client)
+			else:
+				# A connected client already has this client_id currently, return code
+				# 0x02 (Identifier rejected) and then close the network connection.
+				logger.debug('A connected client already has this client_id in a current session')
+				r = MQTT_ConnectACK()
+				r.ConnectionACK = 0x02
 	return None
 
 	# TODO
@@ -97,6 +114,7 @@ def publish_callback(packet):
 	retained 	   = packet.HeaderFlags & 2**0 != 0
 	logger.debug('retained == ' + str(retained))
 	qos 		   = packet.HeaderFlags & 0b00000110
+	#qos = 0
 	logger.debug('qos == ' + str(qos))
 
 	if retained:
@@ -206,8 +224,8 @@ def send_to_clients(topic, packet):
 			send(client[0], packet)
 
 def send(client, packet):
-	logger.debug('Sending packet to client ' + str(client))
 	if sessions[client].is_connected:
+		logger.debug('Sending packet to client ' + str(client))
 		client.send(packet.build())
 
 def create_session(clean_session, client, client_id):
@@ -228,6 +246,15 @@ def existing_client_id(client_id):
 		if v.client_id == client_id:
 			return k
 	return None
+
+def replace_client_in_subscriptions(existing_client, client):
+	for k, v in subscriptions.items():
+		# v is a set
+		for t in v:
+			if t[0] == existing_client:
+				qos = t[1]
+				subscriptions[k].remove(t)
+				subscriptions[k].add((client, qos))
 
 def matches(topic, a_filter):
 	topic = str(topic)
