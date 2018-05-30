@@ -69,7 +69,7 @@ class mqttd(connection):
 					p.show()
 
 					self.pendingPacketType = p.ControlPacketType
-					logger.warn("\n\nMQTT Control Packet Type {}".format(self.pendingPacketType))
+					logger.warn("MQTT Control Packet Type {}".format(self.pendingPacketType))
 
 				if len(data) == 0:
 					logger.warn("Bad MQTT Packet, Length = 0")
@@ -223,7 +223,7 @@ class mqttd(connection):
 			if r:
 				r.show()
 				s = r.build()
-				logger.warn("Sent : " + str(s))
+				#logger.warn("Sent : " + str(s))
 				self.send(r.build()) # Send the building each layer of the MQTT packet
 				
 		return len(data)
