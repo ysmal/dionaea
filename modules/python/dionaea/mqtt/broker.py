@@ -78,7 +78,8 @@ def connect_callback(client, packet):
 			logger.info('---> A client already has this client_id in a saved session.')
 			if client.local.host == sessions[existing_client].hostname:
 				# Same IP, so should be a client takeover
-				logger.info('---> Client already established a persistent session before (same IP). Session resumed.')
+				logger.info('---> Client already established a persistent session before (same IP: ' 
+					+ client.local.host + '). Session resumed.')
 				sessions[client] = sessions.pop(existing_client)
 				session = sessions[client]
 				# Replace client in subscriptions
@@ -94,7 +95,8 @@ def connect_callback(client, packet):
 			# existing_client is connected
 			if client.local.host == sessions[existing_client].hostname:
 				# Same IP, so should be a client takeover
-				logger.info('---> Client takeover as the previous client with this ID didnt disconnect gracefully.')
+				logger.info('---> Client takeover as the previous client (same IP: ' + client.local.host 
+					+ ') with this ID didnt disconnect gracefully.')
 				sessions[client] = sessions.pop(existing_client)
 				session = sessions[client]
 				# Replace client in subscriptions
