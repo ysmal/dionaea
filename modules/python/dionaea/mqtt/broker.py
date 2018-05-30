@@ -64,8 +64,8 @@ def connect_callback(client, packet):
 		if client_id is None or client_id == "":
 			# Zero-byte client_id, respond with CONNACK and return code 0x02
 			# (Identifier rejected) and then close the network connection.
-			logger.error('---> Client ID not specified. Not allowed for a persistent session.')
-			logger.error('---> Returning ConnectionACK with a code Ox02.')
+			logger.info('---> Client ID not specified. Not allowed for a persistent session.')
+			logger.info('---> Returning ConnectionACK with a code Ox02.')
 			r = MQTT_ConnectACK()
 			r.ConnectionACK = 0x02
 			return r
@@ -86,8 +86,8 @@ def connect_callback(client, packet):
 				replace_client_in_subscriptions(existing_client, client)
 			else:
 				# Return code 0x02 (Identifier rejected) and then close the network connection.
-				logger.eror('---> Another client already has this client ID in a saved session.')
-				logger.error('---> Returning ConnectionACK with a code Ox02.')
+				logger.info('---> Another client already has this client ID in a saved session.')
+				logger.info('---> Returning ConnectionACK with a code Ox02.')
 				r = MQTT_ConnectACK()
 				r.ConnectionACK = 0x02
 				return r
@@ -104,8 +104,8 @@ def connect_callback(client, packet):
 			else:
 				# A connected client already has this client_id currently, return code
 				# 0x02 (Identifier rejected) and then close the network connection.
-				logger.error('---> Another client already have this client ID in a current session.')
-				logger.error('---> Returning ConnectionACK with a code Ox02.')
+				logger.info('---> Another client already have this client ID in a current session.')
+				logger.info('---> Returning ConnectionACK with a code Ox02.')
 				r = MQTT_ConnectACK()
 				r.ConnectionACK = 0x02
 	return None
@@ -121,16 +121,18 @@ def connect_callback(client, packet):
 	# 	session.username = username.decode("utf-8")
 	# 	session.password = password.decode("utf-8")
 
-	logger.debug('Sessions: \n' + str(sessions))
+	logger.info('---> Sessions stored in the broker: \n' + str(sessions))
 
 def publish_callback(packet):
 	topic 		   = packet.Topic.decode("utf-8")
 	message  	   = packet.Message.decode("utf-8")
 	retained 	   = (packet.HeaderFlags & 2**0) != 0
-	logger.debug('retained == ' + str(retained))
 	qos 		   = packet.HeaderFlags & 0b00000110
-	#qos = 0
-	logger.debug('qos == ' + str(qos))
+
+	logger.info('Topic: ' + topic)
+	logger.info('Message: ' + message)
+	logger.info('Retained: ' + str(retained))
+	logger.info('QoS: ' + str(qos))
 
 	if retained:
 		if len(message) == 0 or message is None:
@@ -146,29 +148,29 @@ def subscribe_callback(client, packet):
 	topic = packet.Topic.decode("utf-8")
 	granted_qos = packet.GrantedQoS
 
+	logger.info('Topic: ' + topic)
+	logger.info('Granted QoS: ' + str(granted_qos))
+
 	# Check valid use of wildcards
 	if not valid_topic(topic):
-		logger.debug('Topic: ' + topic + ' not valid')
+		logger.info('---> Topic: ' + topic + ' is not valid.')
 		return
 
 	add_subscription(topic, client, granted_qos)
 
 	for topic_retained, v in retained_messages.items():
 		if matches(topic_retained, topic):
-			logger.debug('SUBSCRIBE: matches(topic_retained, topic)')
 			pending_retained_message = retained_messages[topic_retained]
 			if pending_retained_message:
 				send(client, pending_retained_message[0])
-		else:
-			logger.debug('SUBSCRIBE: NOT matches(topic, a_filter): ' 
-				+ str(topic_retained) + ' and ' + str(topic))
 
 def unsubscribe_callback(client, packet):
 	topic = packet.Topic.decode("utf-8")
 
+	logger.info('Topic: ' + topic)
+
 	# Check valid use of wildcards
 	if not valid_topic(topic):
-		logger.debug('Topic: ' + topic + ' not valid')
 		return
 
 	delete_subscription(topic, client)
@@ -182,7 +184,7 @@ def disconnect_callback(client, packet):
 	else:
 		# Keep the client state in memory but indicate that client is disconnected
 		session.is_connected = False
-	logger.debug('Sessions: \n' + str(sessions))
+	logger.debug('---> Sessions stored in the broker: \n' + str(sessions))
 
 
 # ----------------------------------------------------------------------------------------------
@@ -191,23 +193,25 @@ def disconnect_callback(client, packet):
 def valid_topic(topic):
 	if '#' in topic and not topic.endswith('#'):
 		# Wildcard character '#' is only allowed as last character in filter
+		logger.info('---> Topic: ' + topic + ' is not valid.')
 		return False
 	if topic != "+":
 		if '+' in topic:
 			if "/+" not in topic and "+/" not in topic:
 				# + wildcard character must occupy entire level
 				return False
+	logger.info('---> Topic: ' + topic + ' is valid.')
 	return True
 
 def add_retained_message(topic, packet, qos):
 	retained_messages[topic] = (packet, qos)
-	logger.debug('added retained message for topic ' + topic + ': ' 
+	logger.info('---> Retained message added for topic ' + topic + ': ' 
 		+ str(retained_messages[topic]))
 
 def delete_retained_message(topic):
 	if topic in retained_messages:
-		logger.debug('deleting retained message for topic ' + topic)
 		del retained_messages[topic]
+		logger.info('---> Retained message deleted for topic ' + topic + '.')
 
 def add_subscription(topic, client, qos):
 	if topic in subscriptions:
@@ -217,35 +221,35 @@ def add_subscription(topic, client, qos):
 		subscriptions[topic] = {(client, qos)}
 	# Save subscription in client state
 	sessions[client].subscriptions.add(topic)
-	logger.debug('Added subscription: ' + topic + ' for client ' 
-		+ str(client))
+	logger.info('---> Added subscription: ' + topic + ' for client ' 
+		+ sessions[client].client_id)
 
 def delete_subscription(topic, client):
 	if topic not in subscriptions:
-		logger.debug('Topic not in *subscriptions*')
 		return
 	subscriptions[topic] = {i for i in subscriptions[topic]
 	if sessions[i[0]].client_id != sessions[client].client_id}
 	# Delete subscription in client state
 	if topic in sessions[client].subscriptions:
 		sessions[client].subscriptions.remove(topic)
-		logger.debug('Deleted subscription: ' + topic + ' for client ' 
-			+ str(client))
+		logger.info('---> Deleted subscription: ' + topic + ' for client ' 
+		+ sessions[client].client_id)
 
 def send_to_clients(topic, packet):
 	if topic in subscriptions:
 		for client in subscriptions[topic]:
-			logger.warn('Transfered packet :' +  str(packet) + ' to : ' + sessions[client[0]].client_id)
 			send(client[0], packet)
 
 def send(client, packet):
 	if sessions[client].is_connected:
-		logger.debug('Sending packet to client ' + str(client))
 		client.send(packet.build())
+		logger.info('---> Packet sent :' +  str(packet) + ' to client: ' 
+			+ sessions[client].client_id)
 
 def create_session(clean_session, client, client_id):
 	new_session = Session(clean_session, client, client_id)
 	sessions[client] = new_session
+	logger.info('---> Created a new session for client: ' + client_id)
 	return new_session
 
 def delete_session(client, client_id):
@@ -255,6 +259,7 @@ def delete_session(client, client_id):
 		delete_subscription(topic, client)
 	# Delete session
 	del sessions[client]
+	logger.info('Deleted session for client: ' + client_id)
 
 def existing_client_id(client_id):
 	for k, v in sessions.items():
@@ -270,6 +275,8 @@ def replace_client_in_subscriptions(existing_client, client):
 				qos = t[1]
 				subscriptions[k].remove(t)
 				subscriptions[k].add((client, qos))
+				logger.info('---> Replaced in subscriptions client: ' + sessions[existing_client].client_id 
+					+ ' by client: ' + sessions[client].client_id) + ' for topic: ' + k
 
 def matches(topic, a_filter):
 	topic = str(topic)

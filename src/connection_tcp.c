@@ -77,7 +77,6 @@
 
 void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 {
-	g_debug("IN connection_tcp_accept_cb");
 	struct connection *con = CONOFF_IO_IN(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
@@ -97,7 +96,6 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 			}
 			break;
 		}
-		g_debug("CREATED NEW SOCKET WITH ACCEPT");
 
 		if( accepted_socket > g_dionaea->limits.fds * 70/100 )
 		{

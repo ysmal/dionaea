@@ -82,7 +82,7 @@ class mqttd(connection):
 			if self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_CONNECT:
 				x = MQTT_Connect(data)
 
-				logger.warn('CONNECT MESSAGE RECEIVED')
+				logger.info('---> New message received: CONNECT')
 
 				i = incident("dionaea.modules.python.mqtt.connect")
 				i.con = self
@@ -98,7 +98,7 @@ class mqttd(connection):
 				
 			elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 				((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
-				logger.warn('PUBLISH MESSAGE RECEIVED QoS1')
+				logger.info('---> New message received: PUBLISH QoS 1')
 
 				x = MQTT_Publish(data)
 
@@ -114,7 +114,7 @@ class mqttd(connection):
 
 			elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 				((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS2) > 0) ) :
-				logger.warn('PUBLISH MESSAGE RECEIVED QoS2')
+				logger.info('---> New message received: PUBLISH QoS 2')
 
 				x = MQTT_Publish(data)
 
@@ -130,13 +130,13 @@ class mqttd(connection):
 
 			elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISHREL) == 96) &
 				((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
-				logger.warn('PUBLISHREL MESSAGE RECEIVED QoS1')
+				logger.info('---> New message received: PUBLISHREL')
 
 				x = MQTT_Publish_Release(data)
 
 			elif ( (self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PUBLISH) or # Added
 				(self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH == 48) ):
-				logger.warn('PUBLISH MESSAGE RECEIVED')
+				logger.info('---> New message received: PUBLISH QoS 0')
 
 				x = MQTT_Publish(data)
 
@@ -154,11 +154,11 @@ class mqttd(connection):
 				x = MQTT_Subscribe(data)
 
 				if x.GrantedQoS == 0:
-					logger.warn('SUBSCRIBE MESSAGE RECEIVED QoS0')
+					logger.info('---> New message received: SUBSCRIBE QoS 0')
 				elif x.GrantedQoS == 1:
-					logger.warn('SUBSCRIBE MESSAGE RECEIVED QoS1')
+					logger.info('---> New message received: SUBSCRIBE QoS 1')
 				else:
-					logger.warn('SUBSCRIBE MESSAGE RECEIVED QoS2')
+					logger.info('---> New message received: SUBSCRIBE QoS 2')
 
 				i = incident("dionaea.modules.python.mqtt.subscribe")
 				i.con = self
@@ -170,7 +170,7 @@ class mqttd(connection):
 				i.report()
 
 			elif self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_UNSUBSCRIBE == 162:
-				logger.warn('UNSUBSCRIBE MESSAGE RECEIVED')
+				logger.info('---> New message received: UNSUBSCRIBE')
 
 				x = MQTT_Unsubscribe(data)
 
@@ -185,19 +185,19 @@ class mqttd(connection):
 				# i.report()
 
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PINGREQ:
-				logger.warn('PINGREQ MESSAGE RECEIVED')
+				logger.info('---> New message received: PINGREQ')
 
 				x = MQTT_PingRequest(data)
 
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_DISCONNECT:
-				logger.warn('DISCONNECT MESSAGE RECEIVED')
+				logger.info('---> New message received: DISCONNECT')
 
 				x = MQTT_DisconnectReq(data)
 
 				disconnect = True
 
 			else:
-				logger.debug('self.pendingPacketType == ' + str(self.pendingPacketType))
+				logger.info('---> New message received:' + self.pendingPacketType.decode("utf-8"))
 				return 0
 
 			self.buf = b''
@@ -216,15 +216,14 @@ class mqttd(connection):
 				disconnect_callback(self, x)
 
 			if r:
-				logger.debug('Identifier rejected, return code 0x02')
+				logger.warn('---> Identifier rejected, return code 0x02.')
 			else:
 				r = self.process(self.pendingPacketType, x)
 
 			if r:
 				r.show()
 				s = r.build()
-				#logger.warn("Sent : " + str(s))
-				self.send(r.build()) # Send the building each layer of the MQTT packet
+				self.send(r.build())
 				
 		return len(data)
 
@@ -233,21 +232,21 @@ class mqttd(connection):
 		rp = None
 		
 		if PacketType == MQTT_CONTROLMESSAGE_TYPE_CONNECT:
-			logger.warn("CONNECT ACK")
+			logger.debug("CONNECT ACK")
 			r = MQTT_ConnectACK()
 
 		elif PacketType == MQTT_CONTROLMESSAGE_TYPE_DISCONNECT:
 			r = ''
 
 		elif PacketType == MQTT_CONTROLMESSAGE_TYPE_PINGREQ:
-			logger.warn("PINGREQ")
+			logger.debug("PINGREQ")
 			r = MQTT_PingResponse()
 
 		#elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE) == 128) &
 		#	((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
 
 		elif PacketType & MQTT_CONTROLMESSAGE_TYPE_UNSUBSCRIBE == 162:
-			logger.warn("UNSUBSCRIBE ACK")
+			logger.debug("UNSUBSCRIBE ACK")
 			l = p.getlayer(MQTT_Unsubscribe)
 			packetidentifier = l.PacketIdentifier
 			r = MQTT_UnsubscribeACK_Identifier()
@@ -255,7 +254,7 @@ class mqttd(connection):
 				r.PacketIdentifier = packetidentifier
 
 		elif PacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE == 128:
-			logger.warn("SUBSCRIBE ACK")
+			logger.debug("SUBSCRIBE ACK")
 			l = p.getlayer(MQTT_Subscribe)
 			packetidentifier = l.PacketIdentifier
 			GrantedQoS = l.GrantedQoS
@@ -272,7 +271,7 @@ class mqttd(connection):
 		# - QoS level 2 - PUBREC packet
 		elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 			((PacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) == 2) ) :
-			logger.warn("PUBLISH ACK QOS1")
+			logger.debug("PUBLISH ACK QOS1")
 			l = p.getlayer(MQTT_Publish)
 			packetidentifier = l.PacketIdentifier
 			if (packetidentifier is not None):
@@ -281,7 +280,7 @@ class mqttd(connection):
 
 		elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 			((PacketType & MQTT_CONTROLMESSAGE_TYPE_QoS2) == 4) ) :
-			logger.warn("PUBLISH REC")
+			logger.debug("PUBLISH REC")
 			l = p.getlayer(MQTT_Publish)
 			packetidentifier = l.PacketIdentifier
 			if (packetidentifier is not None):
@@ -291,11 +290,11 @@ class mqttd(connection):
 
 		elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 			((PacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) == 0) ) :
-			logger.warn("PUBLISH ACK QOS0")
+			logger.debug("PUBLISH ACK QOS0")
 			r = None
 
 		elif (PacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISHREL) == 96:
-			logger.warn("PUBLISH REL")
+			logger.debug("PUBLISH REL")
 			l = p.getlayer(MQTT_Publish_Release)
 			packetidentifier = l.PacketIdentifier
 			if (packetidentifier is not None):
