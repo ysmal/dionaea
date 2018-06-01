@@ -127,12 +127,14 @@ def publish_callback(packet):
 	topic 		   = packet.Topic.decode("utf-8")
 	message  	   = packet.Message.decode("utf-8")
 	retained 	   = (packet.HeaderFlags & 2**0) != 0
-	qos 		   = packet.HeaderFlags & 0b00000110
-
+	qos 		   = (packet.HeaderFlags & 0b00000110) >> 1
+	header         = packet.HeaderFlags
+ 
 	logger.info('Topic: ' + topic)
 	logger.info('Message: ' + message)
 	logger.info('Retained: ' + str(retained))
 	logger.info('QoS: ' + str(qos))
+	logger.info('Header: ' + str(header))
 
 	if retained:
 		if len(message) == 0 or message is None:
