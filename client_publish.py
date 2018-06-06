@@ -28,8 +28,10 @@ while not connected:
     time.sleep(1)
 
 try:
+	i = 0
 	while True:
-		client.publish("home/kitchen/temp", "20")
+		client.publish("home/kitchen/temp", str(i))
+		i = i+1
 		time.sleep(3)
 except KeyboardInterrupt:
 	client.disconnect()

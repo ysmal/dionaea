@@ -136,16 +136,16 @@ class MQTT_Publish(Packet):
 
 class MQTT_PublishACK(Packet):
 	name="MQTT PUBLISH ACK"
-	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_CONNECTACK
+	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_PUBLISHACK
 	fields_desc =[
 		ByteField("HeaderFlags",0x40),
 		ByteField("MessageLength",0x02),
-		XShortField("ConnectionACK",0x00),
+		XShortField("PacketIdentifier",0x00),
 	]
 
 class MQTT_PublishACK_Identifier(Packet):
 	name="MQTT PUBLISH ACK Identifier"
-	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_CONNECTACK
+	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_PUBLISHACK
 	fields_desc =[
 		ByteField("HeaderFlags",0x40),
 		ByteField("MessageLength",0x02),
@@ -171,7 +171,7 @@ class MQTT_Publish_Release(Packet):
 	]
 
 class MQTT_Publish_Complete(Packet):
-	name="MQTT PUBLISH Release"
+	name="MQTT PUBLISH Complete"
 	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_PUBLISHCOM
 	fields_desc =[
 		ByteField("HeaderFlags",0x70),

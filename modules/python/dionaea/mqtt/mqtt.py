@@ -196,6 +196,10 @@ class mqttd(connection):
 
 				disconnect = True
 
+			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PUBLISHACK:
+				logger.info('---> New message received: PUBLISHACK')
+				return 0
+
 			else:
 				logger.info('---> New message received:' + self.pendingPacketType.decode("utf-8"))
 				return 0
@@ -222,7 +226,7 @@ class mqttd(connection):
 
 			if r:
 				r.show()
-				s = r.build()
+				#s = r.build()
 				self.send(r.build())
 				
 		return len(data)
@@ -261,6 +265,7 @@ class mqttd(connection):
 			r = MQTT_SubscribeACK_Identifier()
 			if (packetidentifier is not None):
 				r.PacketIdentifier = packetidentifier
+				logger.info('Packet ID SUBACK: ' + str(packetidentifier))
 			if (GrantedQoS is not None):
 				r.GrantedQoS = GrantedQoS
 

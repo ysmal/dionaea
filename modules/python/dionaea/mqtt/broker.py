@@ -149,9 +149,11 @@ def publish_callback(packet):
 def subscribe_callback(client, packet):
 	topic = packet.Topic.decode("utf-8")
 	granted_qos = packet.GrantedQoS
+	packet_id = packet.PacketIdentifier
 
 	logger.info('Topic: ' + topic)
 	logger.info('Granted QoS: ' + str(granted_qos))
+	logger.info('Packet ID: ' + str(packet_id))
 
 	# Check valid use of wildcards
 	if not valid_topic(topic):
@@ -293,3 +295,6 @@ def matches(topic, a_filter):
 		topic_pattern = re.compile(topic.replace('#', '.*')
 			.replace('$', '\$').replace('+', '[/\$\s\w\d]+'))
 		return match_pattern.match(topic)
+
+def get_sub():
+	return subscriptions
