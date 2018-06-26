@@ -557,7 +557,9 @@ class logsqlhandler(ihandler):
                 mqtt_publish_command INTEGER PRIMARY KEY,
                 connection INTEGER,
                 mqtt_publish_command_topic TEXT,
-                mqtt_publish_command_message TEXT
+                mqtt_publish_command_message TEXT,
+                mqtt_publish_command_retain INTEGER,
+                mqtt_publish_command_qos INTEGER
                 -- CONSTRAINT mqtt_publish_commands_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
             )""")
 
@@ -570,7 +572,8 @@ class logsqlhandler(ihandler):
                 mqtt_subscribe_command INTEGER PRIMARY KEY,
                 connection INTEGER,
                 mqtt_subscribe_command_messageid TEXT,
-                mqtt_subscribe_command_topic TEXT
+                mqtt_subscribe_command_topic TEXT,
+                mqtt_subscribe_command_qos INTEGER
                 -- CONSTRAINT mqtt_subscribe_commands_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
             )""")
 
@@ -1048,14 +1051,14 @@ class logsqlhandler(ihandler):
         con = icd.con
         if con in self.attacks:
             attackid = self.attacks[con][1]
-            self.cursor.execute("INSERT INTO mqtt_publish_commands (connection, mqtt_publish_command_topic, mqtt_publish_command_message) VALUES (?,?,?)",
-                (attackid, icd.publishtopic, icd.publishmessage))
+            self.cursor.execute("INSERT INTO mqtt_publish_commands (connection, mqtt_publish_command_topic, mqtt_publish_command_message, mqtt_publish_command_retain, mqtt_publish_command_qos) VALUES (?,?,?,?,?)",
+                (attackid, icd.publishtopic, icd.publishmessage, icd.retain, icd.qos))
             self.dbh.commit()
 
     def handle_incident_dionaea_modules_python_mqtt_subscribe(self, icd):
         con = icd.con
         if con in self.attacks:
             attackid = self.attacks[con][1]
-            self.cursor.execute("INSERT INTO mqtt_subscribe_commands (connection, mqtt_subscribe_command_messageid, mqtt_subscribe_command_topic) VALUES (?,?,?)",
-                (attackid, icd.subscribemessageid, icd.subscribetopic))
+            self.cursor.execute("INSERT INTO mqtt_subscribe_commands (connection, mqtt_subscribe_command_messageid, mqtt_subscribe_command_topic, mqtt_subscribe_command_qos) VALUES (?,?,?,?)",
+                (attackid, icd.subscribemessageid, icd.subscribetopic, icd.qos))
             self.dbh.commit()

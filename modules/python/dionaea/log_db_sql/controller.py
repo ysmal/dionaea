@@ -456,7 +456,9 @@ class LogSQLHandler(ihandler):
             model.MQTTPublishCommand(
                 connection_id=attackid,
                 topic=icd.publishtopic,
-                message=icd.publishmessage
+                message=icd.publishmessage,
+                retain=icd.retain,
+                qos=icd.qos
             )
         )
         self.db_session.commit()
@@ -471,7 +473,8 @@ class LogSQLHandler(ihandler):
             model.MQTTSubscribeCommand(
                 connection_id=attackid,
                 messageid=icd.subscribemessageid,
-                topic=icd.subscribetopic
+                topic=icd.subscribetopic,
+                qos=icd.qos
             )
         )
         self.db_session.commit()

@@ -108,6 +108,8 @@ class MQTTPublishCommand(Base):
     connection_id = Column(Integer, ForeignKey('connection.id'), index=True)
     topic = Column(String(255))
     message = Column(String(255))
+    retain = Column(Integer)
+    qos = Column(Integer)
 
 
 class MQTTSubscribeCommand(Base):
@@ -117,6 +119,7 @@ class MQTTSubscribeCommand(Base):
     connection_id = Column(Integer, ForeignKey('connection.id'), index=True)
     messageid = Column(String(255))
     topic = Column(String(255))
+    qos = Column(Integer)
 
 
 class MySQLCommand(Base):

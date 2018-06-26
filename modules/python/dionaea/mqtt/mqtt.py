@@ -106,6 +106,8 @@ class mqttd(connection):
 				i.con = self
 				i.publishtopic = x.Topic
 				i.publishmessage = x.Message
+				i.retain = (x.HeaderFlags & 2**0) != 0
+				i.qos = (x.HeaderFlags & 0b00000110) >> 1
 
 				# Added
 				publish = True
@@ -122,6 +124,8 @@ class mqttd(connection):
 				i.con = self
 				i.publishtopic = x.Topic
 				i.publishmessage = x.Message
+				i.retain = (x.HeaderFlags & 2**0) != 0
+				i.qos = (x.HeaderFlags & 0b00000110) >> 1
 
 				# Added
 				publish = True
@@ -144,6 +148,8 @@ class mqttd(connection):
 				i.con = self
 				i.publishtopic = x.Topic
 				i.publishmessage = x.Message
+				i.retain = (x.HeaderFlags & 2**0) != 0
+				i.qos = (x.HeaderFlags & 0b00000110) >> 1
 
 				# Added
 				publish = True
@@ -164,6 +170,7 @@ class mqttd(connection):
 				i.con = self
 				i.subscribemessageid = x.PacketIdentifier
 				i.subscribetopic = x.Topic
+				i.qos = x.GrantedQoS
 
 				subscribe = True
 
