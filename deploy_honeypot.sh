@@ -43,6 +43,10 @@ autoreconf -vi
 make
 sudo make install
 
+# Changing the ownership of some directory where files are to be written as we launch the honeypot with a swith of user and group
+cd /opt/first_version_dionaea/var/dionaea/
+sudo chown -R dionaea:dionaea ./
+
 # At this point the the new honeypot can be found in the directory /opt/dionaea. 
 # We can launch it on the server with the following command to lit it run in background:
 nohup sudo /opt/dionaea/bin/dionaea -c /opt/dionaea/etc/dionaea/dionaea.cfg -l info -u dionaea -g dionaea -p /opt/dionaea/var/run/dionaea.pid >& /dev/null &
