@@ -4,7 +4,7 @@ from utils import gen_client_id
 from random import randint
 
 connected = False
-broker_address = "10.0.2.15"
+broker_address = "2001:67c:6ec:224:f816:3eff:fef2:841e"
 broker_port = 1883
 keepalive = 60
 client_id = "paho_bedroom_temp"
@@ -45,8 +45,8 @@ while not connected:
 try:
 	temp = randint(19, 22)
 	while True:
-		client.publish("home/kitchen/temp", str(temp), qos=0)
-		time.sleep(60)
+		client.publish("home/bedroom/temp", str(temp), qos=0)
+		time.sleep(120)
 except KeyboardInterrupt:
 	client.disconnect()
 	client.loop_stop()
