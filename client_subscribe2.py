@@ -14,7 +14,7 @@ def on_connect(client, userdata, flags, rc):
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
 	print("Received from : " + str(client))
-    #print(msg.topic + ": " + str(msg.payload))
+    	print(msg.topic + ": " + str(msg.payload))
 
 def on_log(client, userdata, level, buf):
     print("log: ",buf)

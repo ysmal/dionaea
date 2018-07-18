@@ -275,6 +275,7 @@ class mqttd(connection):
 				logger.info('Packet ID SUBACK: ' + str(packetidentifier))
 			if (GrantedQoS is not None):
 				r.GrantedQoS = GrantedQoS
+				r.MessageLength = 0x03					#2 for Packet ID + 1 for QoS
 
 		# mqtt-v3.1.1-os.pdf - page 36
 		# For "Publish" Packet, the Response will be varied with the QoS level:
