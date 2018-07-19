@@ -144,7 +144,7 @@ def publish_callback(packet):
 
 	for a_filter, v in subscriptions.items():
 		if matches(topic, a_filter):
-			send_to_clients(a_filter, packet)
+			send_to_clients(a_filter, packet, qos)
 
 def subscribe_callback(client, packet):
 	topic = packet.Topic.decode("utf-8")
@@ -239,9 +239,10 @@ def delete_subscription(topic, client):
 		logger.info('---> Deleted subscription: ' + topic + ' for client ' 
 		+ sessions[client].client_id)
 
-def send_to_clients(topic, packet):
+def send_to_clients(topic, packet, qos):
 	if topic in subscriptions:
 		for client in subscriptions[topic]:
+			packet = adjust_qos(packet, qos, client[1])
 			send(client[0], packet)
 
 def send(client, packet):
@@ -249,6 +250,13 @@ def send(client, packet):
 		client.send(packet.build())
 		logger.info('---> Packet sent :' +  str(packet) + ' to client: ' 
 			+ sessions[client].client_id)
+
+def adjust_qos(packet, qos1, qos2):
+	if qos1 > qos2:
+		if qos2 == 0:					#No Packet ID field if qos=0
+			packet.MessageLength = packet.MessageLength - 2
+		packet.HeaderFlags = ((packet.HeaderFlags & 0b11111001) | (qos2 << 1))
+	return packet
 
 def create_session(clean_session, client, client_id):
 	new_session = Session(clean_session, client, client_id)
