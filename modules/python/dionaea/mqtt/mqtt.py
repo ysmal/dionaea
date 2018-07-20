@@ -205,6 +205,10 @@ class mqttd(connection):
 
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PUBLISHACK:
 				logger.info('---> New message received: PUBLISHACK')
+
+				x = MQTT_PublishACK(data)
+				puback_callback(self, x)
+
 				return 0
 
 			else:

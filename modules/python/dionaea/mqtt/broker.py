@@ -1,5 +1,7 @@
 import logging
 import re
+import queue
+import itertools
 
 from dionaea.mqtt.include.packets import *
 from dionaea.mqtt.include.packets import *
@@ -19,7 +21,7 @@ class Session(object):
 		self.client_id = client_id
 		self.clean_session = clean_session
 		self.subscriptions = set()
-		self.undelivered_messages = dict()
+		self.undelivered_messages = queue.Queue()
 		self.is_connected = True
 		self.hostname = client.local.host
 		self.port = client.local.port
@@ -84,6 +86,8 @@ def connect_callback(client, packet):
 				session = sessions[client]
 				# Replace client in subscriptions
 				replace_client_in_subscriptions(existing_client, client)
+				# Resend unacknowledged packets
+				redeliver_packets(client)
 			else:
 				# Return code 0x02 (Identifier rejected) and then close the network connection.
 				logger.info('---> Another client already has this client ID in a saved session.')
@@ -146,6 +150,11 @@ def publish_callback(packet):
 		if matches(topic, a_filter):
 			send_to_clients(a_filter, packet, qos)
 
+def puback_callback(client, packet):
+	packet_id = packet.PacketIdentifier
+
+	acknowledge_publish(client, packet_id)
+
 def subscribe_callback(client, packet):
 	topic = packet.Topic.decode("utf-8")
 	granted_qos = packet.GrantedQoS
@@ -207,6 +216,10 @@ def valid_topic(topic):
 	logger.info('---> Topic: ' + topic + ' is valid.')
 	return True
 
+def redeliver_packets(client):
+	for packet in [undelivered[1] for undelivered in list((sessions[client].undelivered_messages).queue)]:
+		send(client, packet)
+
 def add_retained_message(topic, packet, qos):
 	retained_messages[topic] = (packet, qos)
 	logger.info('---> Retained message added for topic ' + topic + ': ' 
@@ -243,7 +256,7 @@ def send_to_clients(topic, packet, qos):
 	if topic in subscriptions:
 		for client in subscriptions[topic]:
 			p = copy.deepcopy(packet)
-			p = adjust_qos(p, qos, client[1])
+			p = process_qos(client[0], p, qos, client[1])
 			send(client[0], p)
 
 def send(client, packet):
@@ -252,13 +265,35 @@ def send(client, packet):
 		logger.info('---> Packet sent :' +  str(packet) + ' to client: ' 
 			+ sessions[client].client_id)
 
-def adjust_qos(packet, qos1, qos2):
+def process_qos(client, packet, qos1, qos2):
 	if qos1 > qos2:
+		qos = qos2
 		if qos2 == 0:					#No Packet ID field if qos=0
 			packet.MessageLength = packet.MessageLength - 2
-			packet.PacketIdentifier = 0
 		packet.HeaderFlags = ((packet.HeaderFlags & 0b11111001) | (qos2 << 1))
+	else:
+		qos = qos1
+
+	if qos == 1:
+		if not sessions[client].undelivered_messages.empty():
+			undelivered_ids = [undelivered[0] for undelivered in list((sessions[client].undelivered_messages).queue)]
+			if packet.PacketIdentifier in undelivered_ids:
+				for i in itertools.count():
+					if not i in undelivered_ids:
+						packet.PacketIdentifier = i
+						break
+		sessions[client].undelivered_messages.put((packet.PacketIdentifier, packet))
 	return packet
+
+def acknowledge_publish(client, packet_id):
+	undelivered_ids = [undelivered[0] for undelivered in list((sessions[client].undelivered_messages).queue)]
+	if packet_id in undelivered_ids:
+		new_queue = queue.Queue()
+		queue_list = list((sessions[client].undelivered_messages).queue)
+		for undelivered in queue_list:
+			if not undelivered[0] == packet_id:
+				new_queue.put((undelivered[0], undelivered[1]))
+		sessions[client].undelivered_messages = new_queue
 
 def create_session(clean_session, client, client_id):
 	new_session = Session(clean_session, client, client_id)
