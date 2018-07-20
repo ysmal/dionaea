@@ -242,8 +242,9 @@ def delete_subscription(topic, client):
 def send_to_clients(topic, packet, qos):
 	if topic in subscriptions:
 		for client in subscriptions[topic]:
-			packet = adjust_qos(packet, qos, client[1])
-			send(client[0], packet)
+			p = copy.deepcopy(packet)
+			p = adjust_qos(p, qos, client[1])
+			send(client[0], p)
 
 def send(client, packet):
 	if sessions[client].is_connected:
@@ -255,6 +256,7 @@ def adjust_qos(packet, qos1, qos2):
 	if qos1 > qos2:
 		if qos2 == 0:					#No Packet ID field if qos=0
 			packet.MessageLength = packet.MessageLength - 2
+			packet.PacketIdentifier = 0
 		packet.HeaderFlags = ((packet.HeaderFlags & 0b11111001) | (qos2 << 1))
 	return packet
 
