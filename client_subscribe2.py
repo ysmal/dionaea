@@ -9,7 +9,7 @@ client_id = None
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
-    client.subscribe("home/kitchen/temp", qos=1)
+    client.subscribe("home/kitchen/temp", qos=2)
 
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):

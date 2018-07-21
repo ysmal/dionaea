@@ -211,6 +211,11 @@ class mqttd(connection):
 
 				return 0
 
+			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PUBLISHRCV:
+				logger.info('---> New message received: PUBLISHRCV')
+
+				x = MQTT_Publish_Received(data)
+
 			else:
 				logger.info('---> New message received:' + self.pendingPacketType.decode("utf-8"))
 				return 0
@@ -237,7 +242,6 @@ class mqttd(connection):
 
 			if r:
 				r.show()
-				#s = r.build()
 				self.send(r.build())
 				
 		return len(data)
@@ -309,6 +313,15 @@ class mqttd(connection):
 			((PacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) == 0) ) :
 			logger.debug("PUBLISH ACK QOS0")
 			r = None
+
+		elif (PacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISHRCV) == 80:
+			logger.debug("PUBLISH RCV")
+			l = p.getlayer(MQTT_Publish_Received)
+			packetidentifier = l.PacketIdentifier
+			if (packetidentifier is not None):
+				r = MQTT_Publish_Release()
+				r.PacketIdentifier = packetidentifier
+				r.HeaderFlags = MQTT_CONTROLMESSAGE_TYPE_PUBLISHREL
 
 		elif (PacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISHREL) == 96:
 			logger.debug("PUBLISH REL")
