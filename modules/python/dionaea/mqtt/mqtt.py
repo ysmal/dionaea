@@ -61,6 +61,7 @@ class mqttd(connection):
 			subscribe 	= False
 			unsubscribe = False
 			disconnect 	= False
+			puback 		= False
 
 			try:
 
@@ -137,9 +138,10 @@ class mqttd(connection):
 				logger.info('---> New message received: PUBLISHREL')
 
 				x = MQTT_Publish_Release(data)
+				
+				puback = True
 
-			elif ( (self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PUBLISH) or # Added
-				(self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH == 48) ):
+			elif (self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PUBLISH):
 				logger.info('---> New message received: PUBLISH QoS 0')
 
 				x = MQTT_Publish(data)
@@ -207,14 +209,22 @@ class mqttd(connection):
 				logger.info('---> New message received: PUBLISHACK')
 
 				x = MQTT_PublishACK(data)
-				puback_callback(self, x)
-
-				return 0
+				
+				puback = True
 
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PUBLISHRCV:
 				logger.info('---> New message received: PUBLISHRCV')
 
 				x = MQTT_Publish_Received(data)
+				
+				puback = True
+
+			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PUBLISHCOM:
+				logger.info('---> New message received: PUBLISHCOM')
+
+				x = MQTT_Publish_Complete(data)
+
+				puback = True
 
 			else:
 				logger.info('---> New message received:' + self.pendingPacketType.decode("utf-8"))
@@ -234,6 +244,8 @@ class mqttd(connection):
 				unsubscribe_callback(self, x)
 			elif disconnect:
 				disconnect_callback(self, x)
+			elif puback:
+				puback_callback(self, x)
 
 			if r:
 				logger.warn('---> Identifier rejected, return code 0x02.')
@@ -301,13 +313,14 @@ class mqttd(connection):
 
 		elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 			((PacketType & MQTT_CONTROLMESSAGE_TYPE_QoS2) == 4) ) :
-			logger.debug("PUBLISH REC")
+			logger.debug("PUBLISH RCV")
 			l = p.getlayer(MQTT_Publish)
 			packetidentifier = l.PacketIdentifier
 			if (packetidentifier is not None):
 				r = MQTT_Publish_Received()
 				r.HeaderFlags = MQTT_CONTROLMESSAGE_TYPE_PUBLISHRCV
 				r.PacketIdentifier = packetidentifier
+				undelivered_qos2(self, r)
 
 		elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 			((PacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) == 0) ) :
@@ -315,16 +328,17 @@ class mqttd(connection):
 			r = None
 
 		elif (PacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISHRCV) == 80:
-			logger.debug("PUBLISH RCV")
+			logger.debug("PUBLISH REL")
 			l = p.getlayer(MQTT_Publish_Received)
 			packetidentifier = l.PacketIdentifier
 			if (packetidentifier is not None):
 				r = MQTT_Publish_Release()
 				r.PacketIdentifier = packetidentifier
 				r.HeaderFlags = MQTT_CONTROLMESSAGE_TYPE_PUBLISHREL
+				undelivered_qos2(self, r)
 
 		elif (PacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISHREL) == 96:
-			logger.debug("PUBLISH REL")
+			logger.debug("PUBLISH COMP")
 			l = p.getlayer(MQTT_Publish_Release)
 			packetidentifier = l.PacketIdentifier
 			if (packetidentifier is not None):

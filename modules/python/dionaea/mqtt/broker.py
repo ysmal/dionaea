@@ -274,7 +274,7 @@ def process_qos(client, packet, qos1, qos2):
 	else:
 		qos = qos1
 
-	if qos == 1:
+	if not qos == 0:
 		if not sessions[client].undelivered_messages.empty():
 			undelivered_ids = [undelivered[0] for undelivered in list((sessions[client].undelivered_messages).queue)]
 			if packet.PacketIdentifier in undelivered_ids:
@@ -293,7 +293,11 @@ def acknowledge_publish(client, packet_id):
 		for undelivered in queue_list:
 			if not undelivered[0] == packet_id:
 				new_queue.put((undelivered[0], undelivered[1]))
+		sessions[client].undelivered_messages = None
 		sessions[client].undelivered_messages = new_queue
+
+def undelivered_qos2(client, packet):
+	sessions[client].undelivered_messages.put((packet.PacketIdentifier, packet))
 
 def create_session(clean_session, client, client_id):
 	new_session = Session(clean_session, client, client_id)
