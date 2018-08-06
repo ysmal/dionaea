@@ -54,4 +54,4 @@ sudo cp -f dionaea.cfg /opt/dionaea/etc/dionaea/
 
 # At this point the the new honeypot can be found in the directory /opt/dionaea. 
 # We can launch it on the server with the following command to lit it run in background:
-nohup sudo /opt/dionaea/bin/dionaea -c /opt/dionaea/etc/dionaea/dionaea.cfg -l info -u dionaea -g dionaea -p /opt/dionaea/var/run/dionaea.pid >& /dev/null &
+nohup sudo /opt/dionaea/bin/dionaea -c /opt/dionaea/etc/dionaea/dionaea.cfg -u dionaea -g dionaea -p /opt/dionaea/var/run/dionaea.pid >& /dev/null &
