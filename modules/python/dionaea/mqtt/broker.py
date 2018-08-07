@@ -31,8 +31,7 @@ class Session(object):
 
 def connect_callback(client, packet):
 	client_id 	  = packet.ClientID.decode("utf-8")
-	clean_session = packet.ConnectFlags & 2**2 != 0 # clean_session = TRUE
-	#clean_session = (packet.ConnectFlags & 2**1) != 0 # clean_session = FALSE
+	clean_session = (packet.ConnectFlags & 0b00000010) >> 1
 	# last_will	  = packet.ConnectFlags & CONNECT_WILL
 	username 	  = packet.Username.decode("utf-8")
 	password 	  = packet.Password.decode("utf-8")
@@ -186,7 +185,7 @@ def unsubscribe_callback(client, packet):
 	if not valid_topic(topic):
 		return
 
-	delete_subscription(topic, client)
+	#delete_subscription(topic, client)
 
 def disconnect_callback(client, packet):
 	session = sessions[client]
@@ -307,9 +306,11 @@ def create_session(clean_session, client, client_id):
 	return new_session
 
 def delete_session(client, client_id):
+	logger.info('IN delete_session()')
 	# Delete subscriptions
 	subs = sessions[client].subscriptions
 	for topic in subs:
+		logger.info('topic in subs: ' + topic)
 		delete_subscription(topic, client)
 	# Delete session
 	del sessions[client]
