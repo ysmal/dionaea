@@ -151,9 +151,9 @@ def publish_callback(packet):
 			send_to_clients(a_filter, packet, qos)
 
 def puback_callback(client, packet):
-	packet_id = packet.PacketIdentifier
-
-	acknowledge_publish(client, packet_id)
+	if not sessions[client].clean_session:
+		packet_id = packet.PacketIdentifier
+		acknowledge_publish(client, packet_id)
 
 def subscribe_callback(client, packet):
 	topic = packet.Topic.decode("utf-8")
@@ -274,7 +274,7 @@ def process_qos(client, packet, qos1, qos2):
 	else:
 		qos = qos1
 
-	if not qos == 0:
+	if not qos == 0 and not sessions[client].clean_session :
 		if not sessions[client].undelivered_messages.empty():
 			undelivered_ids = [undelivered[0] for undelivered in list((sessions[client].undelivered_messages).queue)]
 			if packet.PacketIdentifier in undelivered_ids:
@@ -297,7 +297,8 @@ def acknowledge_publish(client, packet_id):
 		sessions[client].undelivered_messages = new_queue
 
 def undelivered_qos2(client, packet):
-	sessions[client].undelivered_messages.put((packet.PacketIdentifier, packet))
+	if not sessions[client].clean_session:
+		sessions[client].undelivered_messages.put((packet.PacketIdentifier, packet))
 
 def create_session(clean_session, client, client_id):
 	new_session = Session(clean_session, client, client_id)

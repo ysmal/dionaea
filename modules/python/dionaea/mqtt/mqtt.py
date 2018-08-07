@@ -227,8 +227,7 @@ class mqttd(connection):
 				puback = True
 
 			else:
-				logger.info('---> New message received:' + self.pendingPacketType.decode("utf-8"))
-				return 0
+				pass
 
 			self.buf = b''
 			x.show()
