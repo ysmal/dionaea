@@ -216,7 +216,7 @@ class MQTT_UnsubscribeACK_Identifier(Packet):
 	name="MQTT Unsubscribe ACK Identifier"
 	controlmessage_type = MQTT_CONTROLMESSAGE_TYPE_UNSUBSCRIBEACK
 	fields_desc =[
-		ByteField("HeaderFlags",0x90),
+		ByteField("HeaderFlags",0xB0),
 		ByteField("MessageLength",0x02),
 		XShortField("PacketIdentifier",0x00),
 	]
