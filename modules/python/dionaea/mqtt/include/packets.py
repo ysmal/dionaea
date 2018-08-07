@@ -96,7 +96,7 @@ class MQTT_Connect(Packet):
 		ByteField("HeaderFlags",0x00),
 		ByteField("MessageLength",0x00),
 		FieldLenField("ProtocolNameLength",None, fmt='H', length_of="ProtocolName"),
-		StrFixedLenField("ProtocolName", "", 6),
+		StrFixedLenField("ProtocolName", "", 4),
 		ByteField("Version",0x00),
 		FlagsField("ConnectFlags", 0x00, -8, MQTT_Connect_Flags),
 		XShortField("KeepAlive",0),
