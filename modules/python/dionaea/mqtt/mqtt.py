@@ -141,7 +141,8 @@ class mqttd(connection):
 				
 				puback = True
 
-			elif (self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PUBLISH):
+			elif (((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) & 
+				((self.pendingPacketType | 192) == 0 )):
 				logger.info('---> New message received: PUBLISH QoS 0')
 
 				x = MQTT_Publish(data)
@@ -230,7 +231,6 @@ class mqttd(connection):
 				pass
 
 			self.buf = b''
-			x.show()
 
 			r = None
 			if connect:
@@ -333,7 +333,7 @@ class mqttd(connection):
 			if (packetidentifier is not None):
 				r = MQTT_Publish_Release()
 				r.PacketIdentifier = packetidentifier
-				r.HeaderFlags = MQTT_CONTROLMESSAGE_TYPE_PUBLISHREL
+				r.HeaderFlags = (MQTT_CONTROLMESSAGE_TYPE_PUBLISHREL + 2)		#Last 4 bits of header are reserved 0010
 				undelivered_qos2(self, r)
 
 		elif (PacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISHREL) == 96:
