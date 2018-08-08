@@ -291,7 +291,7 @@ class mqttd(connection):
 			r = MQTT_SubscribeACK_Identifier()
 			if (packetidentifier is not None):
 				r.PacketIdentifier = packetidentifier
-				logger.info('Packet ID SUBACK: ' + str(packetidentifier))
+				logger.debug('Packet ID SUBACK: ' + str(packetidentifier))
 			if (GrantedQoS is not None):
 				r.GrantedQoS = GrantedQoS
 				r.MessageLength = 0x03					#2 for Packet ID + 1 for QoS

@@ -306,15 +306,13 @@ def create_session(clean_session, client, client_id):
 	return new_session
 
 def delete_session(client, client_id):
-	logger.info('IN delete_session()')
 	# Delete subscriptions
-	subs = sessions[client].subscriptions
+	subs = set(sessions[client].subscriptions)
 	for topic in subs:
-		logger.info('topic in subs: ' + topic)
 		delete_subscription(topic, client)
 	# Delete session
 	del sessions[client]
-	logger.info('Deleted session for client: ' + client_id)
+	logger.info('---> Deleted session for client: ' + client_id)
 
 def existing_client_id(client_id):
 	for k, v in sessions.items():
