@@ -142,7 +142,7 @@ class mqttd(connection):
 				puback = True
 
 			elif (((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) & 
-				((self.pendingPacketType | 192) == 0 )):
+				((self.pendingPacketType >> 6) == 0 )):
 				logger.info('---> New message received: PUBLISH QoS 0')
 
 				x = MQTT_Publish(data)
@@ -228,6 +228,7 @@ class mqttd(connection):
 				puback = True
 
 			else:
+				logger.info('---> DISCARDED')
 				pass
 
 			self.buf = b''
