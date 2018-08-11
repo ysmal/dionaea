@@ -228,7 +228,7 @@ class mqttd(connection):
 				puback = True
 
 			else:
-				logger.info('---> DISCARDED')
+				logger.info('---> ' + str(self.pendingPacketType) + ' DISCARDED')
 				pass
 
 			self.buf = b''

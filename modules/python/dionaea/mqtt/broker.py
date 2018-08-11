@@ -30,12 +30,18 @@ class Session(object):
 		# self.password = None
 
 def connect_callback(client, packet):
+	protocol 	  = packet.ProtocolName.decode("utf-8")
 	client_id 	  = packet.ClientID.decode("utf-8")
 	clean_session = (packet.ConnectFlags & 0b00000010) >> 1
 	# last_will	  = packet.ConnectFlags & CONNECT_WILL
 	username 	  = packet.Username.decode("utf-8")
 	password 	  = packet.Password.decode("utf-8")
 	session 	  = None
+
+	if (protocol != "MQTT"):
+		r = MQTT_ConnectACK()
+		r.ConnectionACK = 0x01
+		return r
 
 	logger.info("Client ID: " + client_id)
 	logger.info('Clean session: ' + str(clean_session))
@@ -47,6 +53,10 @@ def connect_callback(client, packet):
 	if clean_session:
 		# No session state needs to be cached for this client after disconnection
 		if client_id is None or client_id == "":
+			if not clean_session:			# No client_id specified must have clean session = True
+				r = MQTT_ConnectACK()
+				r.ConnectionACK = 0x02
+				return r
 			# No client_id specified, generates one
 			logger.info('---> Client ID not specified.')
 			client_id = gen_client_id()
@@ -85,6 +95,11 @@ def connect_callback(client, packet):
 				session = sessions[client]
 				# Replace client in subscriptions
 				replace_client_in_subscriptions(existing_client, client)
+
+				r = MQTT_ConnectACK()
+				r.ConnectionACK = 0x100				# Set Session Present Flag	
+				return r
+
 				# Resend unacknowledged packets
 				redeliver_packets(client)
 			else:
@@ -104,6 +119,10 @@ def connect_callback(client, packet):
 				session = sessions[client]
 				# Replace client in subscriptions
 				replace_client_in_subscriptions(existing_client, client)
+
+				r = MQTT_ConnectACK()
+				r.ConnectionACK = 0x100				# Set Session Present Flag	
+				return r
 			else:
 				# A connected client already has this client_id currently, return code
 				# 0x02 (Identifier rejected) and then close the network connection.
@@ -328,8 +347,8 @@ def replace_client_in_subscriptions(existing_client, client):
 				qos = t[1]
 				subscriptions[k].remove(t)
 				subscriptions[k].add((client, qos))
-				logger.info('---> Replaced in subscriptions client: ' + sessions[existing_client].client_id 
-					+ ' by client: ' + sessions[client].client_id) + ' for topic: ' + k
+				#logger.info('---> Replaced in subscriptions client: ' + sessions[existing_client].client_id 
+				#	+ ' by client: ' + sessions[client].client_id) + ' for topic: ' + k
 
 def matches(topic, a_filter):
 	topic = str(topic)
