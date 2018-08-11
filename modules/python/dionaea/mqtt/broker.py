@@ -3,6 +3,8 @@ import re
 import queue
 import itertools
 
+from collections import deque
+
 from dionaea.mqtt.include.packets import *
 from dionaea.mqtt.include.packets import *
 from dionaea.mqtt.utils import *
@@ -21,7 +23,7 @@ class Session(object):
 		self.client_id = client_id
 		self.clean_session = clean_session
 		self.subscriptions = set()
-		self.undelivered_messages = queue.Queue()
+		self.undelivered_messages = deque()
 		self.is_connected = True
 		self.hostname = client.local.host
 		self.port = client.local.port
@@ -39,9 +41,7 @@ def connect_callback(client, packet):
 	session 	  = None
 
 	if (protocol != "MQTT"):
-		r = MQTT_ConnectACK()
-		r.ConnectionACK = 0x01
-		return r
+		return 1
 
 	logger.info("Client ID: " + client_id)
 	logger.info('Clean session: ' + str(clean_session))
@@ -54,9 +54,7 @@ def connect_callback(client, packet):
 		# No session state needs to be cached for this client after disconnection
 		if client_id is None or client_id == "":
 			if not clean_session:			# No client_id specified must have clean session = True
-				r = MQTT_ConnectACK()
-				r.ConnectionACK = 0x02
-				return r
+				return 2
 			# No client_id specified, generates one
 			logger.info('---> Client ID not specified.')
 			client_id = gen_client_id()
@@ -77,9 +75,7 @@ def connect_callback(client, packet):
 			# (Identifier rejected) and then close the network connection.
 			logger.info('---> Client ID not specified. Not allowed for a persistent session.')
 			logger.info('---> Returning ConnectionACK with a code Ox02.')
-			r = MQTT_ConnectACK()
-			r.ConnectionACK = 0x02
-			return r
+			return 2
 		elif existing_client is None:
 			# Client never established a session before
 			logger.info('---> Client never established a session before.')
@@ -92,23 +88,16 @@ def connect_callback(client, packet):
 				logger.info('---> Client already established a persistent session before (same IP: ' 
 					+ client.local.host + '). Session resumed.')
 				sessions[client] = sessions.pop(existing_client)
+				sessions[client].is_connected = True
 				session = sessions[client]
 				# Replace client in subscriptions
 				replace_client_in_subscriptions(existing_client, client)
-
-				r = MQTT_ConnectACK()
-				r.ConnectionACK = 0x100				# Set Session Present Flag	
-				return r
-
-				# Resend unacknowledged packets
-				redeliver_packets(client)
+				return 101
 			else:
 				# Return code 0x02 (Identifier rejected) and then close the network connection.
 				logger.info('---> Another client already has this client ID in a saved session.')
 				logger.info('---> Returning ConnectionACK with a code Ox02.')
-				r = MQTT_ConnectACK()
-				r.ConnectionACK = 0x02
-				return r
+				return 2
 		else:
 			# existing_client is connected
 			if client.local.host == sessions[existing_client].hostname:
@@ -120,16 +109,13 @@ def connect_callback(client, packet):
 				# Replace client in subscriptions
 				replace_client_in_subscriptions(existing_client, client)
 
-				r = MQTT_ConnectACK()
-				r.ConnectionACK = 0x100				# Set Session Present Flag	
-				return r
+				return 100
 			else:
 				# A connected client already has this client_id currently, return code
 				# 0x02 (Identifier rejected) and then close the network connection.
 				logger.info('---> Another client already have this client ID in a current session.')
 				logger.info('---> Returning ConnectionACK with a code Ox02.')
-				r = MQTT_ConnectACK()
-				r.ConnectionACK = 0x02
+				return 2
 	return None
 
 	# TODO
@@ -215,8 +201,6 @@ def disconnect_callback(client, packet):
 	else:
 		# Keep the client state in memory but indicate that client is disconnected
 		session.is_connected = False
-	logger.debug('---> Sessions stored in the broker: \n' + str(sessions))
-
 
 # ----------------------------------------------------------------------------------------------
 
@@ -235,8 +219,9 @@ def valid_topic(topic):
 	return True
 
 def redeliver_packets(client):
-	for packet in [undelivered[1] for undelivered in list((sessions[client].undelivered_messages).queue)]:
-		send(client, packet)
+	for undelivered in sessions[client].undelivered_messages:
+		send(client, undelivered[1])
+		time.sleep(0.5)
 
 def add_retained_message(topic, packet, qos):
 	retained_messages[topic] = (packet, qos)
@@ -246,7 +231,6 @@ def add_retained_message(topic, packet, qos):
 def delete_retained_message(topic):
 	if topic in retained_messages:
 		del retained_messages[topic]
-		logger.info('---> Retained message deleted for topic ' + topic + '.')
 
 def add_subscription(topic, client, qos):
 	if topic in subscriptions:
@@ -293,30 +277,31 @@ def process_qos(client, packet, qos1, qos2):
 		qos = qos1
 
 	if not qos == 0 and not sessions[client].clean_session :
-		if not sessions[client].undelivered_messages.empty():
-			undelivered_ids = [undelivered[0] for undelivered in list((sessions[client].undelivered_messages).queue)]
+		if sessions[client].undelivered_messages:
+			undelivered_ids = [undelivered[0] for undelivered in sessions[client].undelivered_messages]
 			if packet.PacketIdentifier in undelivered_ids:
 				for i in itertools.count():
 					if not i in undelivered_ids:
 						packet.PacketIdentifier = i
 						break
-		sessions[client].undelivered_messages.put((packet.PacketIdentifier, packet))
+		sessions[client].undelivered_messages.append((packet.PacketIdentifier, packet))
+
 	return packet
 
 def acknowledge_publish(client, packet_id):
-	undelivered_ids = [undelivered[0] for undelivered in list((sessions[client].undelivered_messages).queue)]
-	if packet_id in undelivered_ids:
-		new_queue = queue.Queue()
-		queue_list = list((sessions[client].undelivered_messages).queue)
-		for undelivered in queue_list:
-			if not undelivered[0] == packet_id:
-				new_queue.put((undelivered[0], undelivered[1]))
-		sessions[client].undelivered_messages = None
-		sessions[client].undelivered_messages = new_queue
+	new_queue = deque()
+
+	while sessions[client].undelivered_messages:
+		elem = sessions[client].undelivered_messages.popleft()
+		if not elem[0] == packet_id:
+			new_queue.append(elem)
+
+	sessions[client].undelivered_messages = None
+	sessions[client].undelivered_messages = new_queue
 
 def undelivered_qos2(client, packet):
 	if not sessions[client].clean_session:
-		sessions[client].undelivered_messages.put((packet.PacketIdentifier, packet))
+		sessions[client].undelivered_messages.append((packet.PacketIdentifier, packet))
 
 def create_session(clean_session, client, client_id):
 	new_session = Session(clean_session, client, client_id)

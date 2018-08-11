@@ -247,14 +247,35 @@ class mqttd(connection):
 			elif puback:
 				puback_callback(self, x)
 
-			if r:
+			if r == 1:
+				rp = MQTT_ConnectACK()
+				rp.ConnectionACK = 0x01				
+				logger.warn('---> Unacceptable protocol version, return code 0x01.')
+				rp.show()
+				self.send(rp.build())
+			elif r == 2:
+				rp = MQTT_ConnectACK()
+				rp.ConnectionACK = 0x02
 				logger.warn('---> Identifier rejected, return code 0x02.')
+				rp.show()
+				self.send(rp.build())
+			elif r == 100:
+				rp = MQTT_ConnectACK()
+				rp.ConnectionACK = 0x100				# Set Session Present Flag	
+				rp.show()
+				self.send(rp.build())
+			elif r == 101:
+				rp = MQTT_ConnectACK()
+				rp.ConnectionACK = 0x100				# Set Session Present Flag
+				rp.show()
+				self.send(rp.build())
+				# Resend unacknowledged packets
+				redeliver_packets(self)
 			else:
-				r = self.process(self.pendingPacketType, x)
-
-			if r:
-				r.show()
-				self.send(r.build())
+				rp = self.process(self.pendingPacketType, x)
+				if rp:
+					rp.show()
+					self.send(rp.build())
 				
 		return len(data)
 
