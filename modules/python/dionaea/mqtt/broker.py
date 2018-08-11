@@ -157,7 +157,8 @@ def publish_callback(packet):
 def puback_callback(client, packet):
 	if not sessions[client].clean_session:
 		packet_id = packet.PacketIdentifier
-		acknowledge_publish(client, packet_id)
+		ptype = packet.HeaderFlags & 0xF0
+		acknowledge_publish(client, packet_id, ptype)
 
 def subscribe_callback(client, packet):
 	topic = packet.Topic.decode("utf-8")
@@ -288,13 +289,25 @@ def process_qos(client, packet, qos1, qos2):
 
 	return packet
 
-def acknowledge_publish(client, packet_id):
+def acknowledge_publish(client, packet_id, ptype):
 	new_queue = deque()
 
 	while sessions[client].undelivered_messages:
 		elem = sessions[client].undelivered_messages.popleft()
-		if not elem[0] == packet_id:
-			new_queue.append(elem)
+		if elem[0] == packet_id:
+			if ptype == 0x40:			#PUBACK
+				if elem[1].HeaderFlags == 0x32:			#PUB QoS1
+					continue
+			elif ptype == 0x50:			#PUBREC
+				if elem[1].HeaderFlags == 0x34:			#PUB QoS2
+					continue
+			elif ptype == 0x60:			#PUBREL
+				if elem[1].HeaderFlags & 0xF0 == 0x50:			#PUBREC
+					continue
+			elif ptype == 0x70:			#PUBCOMP
+				if elem[1].HeaderFlags & 0xF0 == 0x60:			#PUB REL
+					continue
+		new_queue.append(elem)
 
 	sessions[client].undelivered_messages = None
 	sessions[client].undelivered_messages = new_queue
