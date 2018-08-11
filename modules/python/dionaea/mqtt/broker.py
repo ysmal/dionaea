@@ -170,7 +170,7 @@ def subscribe_callback(client, packet):
 	logger.info('Packet ID: ' + str(packet_id))
 
 	# Check valid use of wildcards
-	if not valid_topic(topic):
+	if not valid_topic(topic) | granted_qos > 2:
 		logger.info('---> Topic: ' + topic + ' is not valid.')
 		return
 
@@ -191,7 +191,7 @@ def unsubscribe_callback(client, packet):
 	if not valid_topic(topic):
 		return
 
-	#delete_subscription(topic, client)
+	delete_subscription(topic, client)
 
 def disconnect_callback(client, packet):
 	session = sessions[client]
