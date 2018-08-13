@@ -2,6 +2,8 @@ import logging
 import re
 import queue
 import itertools
+import time
+import datetime
 
 from collections import deque
 
@@ -27,15 +29,11 @@ class Session(object):
 		self.is_connected = True
 		self.hostname = client.local.host
 		self.port = client.local.port
-		# self.last_will = None
-		# self.username = None
-		# self.password = None
 
 def connect_callback(client, packet):
 	protocol 	  = packet.ProtocolName.decode("utf-8")
 	client_id 	  = packet.ClientID.decode("utf-8")
 	clean_session = (packet.ConnectFlags & 0b00000010) >> 1
-	# last_will	  = packet.ConnectFlags & CONNECT_WILL
 	username 	  = packet.Username.decode("utf-8")
 	password 	  = packet.Password.decode("utf-8")
 	session 	  = None
@@ -118,17 +116,6 @@ def connect_callback(client, packet):
 				return 2
 	return None
 
-	# TODO
-	# if last_will:
-	# 	topic = packet.WillTopic.decode("utf-8")
-	# 	message = packet.WillMessage.decode("utf-8")
-	# 	session.last_will = (topic, message)
-
-	# TODO
-	# if username is not None and password is not None:
-	# 	session.username = username.decode("utf-8")
-	# 	session.password = password.decode("utf-8")
-
 	logger.info('---> Sessions stored in the broker: \n' + str(sessions))
 
 def publish_callback(packet):
@@ -170,9 +157,9 @@ def subscribe_callback(client, packet):
 	logger.info('Packet ID: ' + str(packet_id))
 
 	# Check valid use of wildcards
-	if not valid_topic(topic) | granted_qos > 2:
+	if not valid_topic(topic) or granted_qos > 2:
 		logger.info('---> Topic: ' + topic + ' is not valid.')
-		return
+		return 3
 
 	add_subscription(topic, client, granted_qos)
 
@@ -243,6 +230,23 @@ def add_subscription(topic, client, qos):
 	sessions[client].subscriptions.add(topic)
 	logger.info('---> Added subscription: ' + topic + ' for client ' 
 		+ sessions[client].client_id)
+
+	# if '$SYS/' in topic:
+	# 	timestamp = datetime.datetime.fromtimestamp(time.time())
+	# 	formated_timestamp = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+	# 	broker_version = "MQTT Version 3.1.1, broker version 1.0"
+
+	# 	packet = MQTT_Publish()
+	# 	packet.HeaderFlags = 0x00110000
+	# 	packet.Topic = topic
+
+	# 	if topic == '$SYS/broker/timestamp':
+	# 		packet.Message = formated_timestamp
+	# 		send(client, packet)
+
+	# 	elif topic == '$SYS/broker/version':
+	# 		packet.Message = broker_version
+	# 		send(client, packet)
 
 def delete_subscription(topic, client):
 	if topic not in subscriptions:
@@ -345,8 +349,6 @@ def replace_client_in_subscriptions(existing_client, client):
 				qos = t[1]
 				subscriptions[k].remove(t)
 				subscriptions[k].add((client, qos))
-				#logger.info('---> Replaced in subscriptions client: ' + sessions[existing_client].client_id 
-				#	+ ' by client: ' + sessions[client].client_id) + ' for topic: ' + k
 
 def matches(topic, a_filter):
 	topic = str(topic)

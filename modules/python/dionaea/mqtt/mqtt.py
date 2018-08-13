@@ -239,7 +239,7 @@ class mqttd(connection):
 			elif publish:
 				publish_callback(x)
 			elif subscribe:
-				subscribe_callback(self, x)
+				r = subscribe_callback(self, x)
 			elif unsubscribe:
 				unsubscribe_callback(self, x)
 			elif disconnect:
@@ -257,6 +257,15 @@ class mqttd(connection):
 				rp = MQTT_ConnectACK()
 				rp.ConnectionACK = 0x02
 				logger.warn('---> Identifier rejected, return code 0x02.')
+				rp.show()
+				self.send(rp.build())
+			elif r == 3:
+				# wrong topic filter
+				packetidentifier = x.getlayer(MQTT_Subscribe).PacketIdentifier
+				rp = MQTT_SubscribeACK_Identifier()
+				rp.PacketIdentifier = packetidentifier
+				rp.MessageLength = 0x03
+				rp.GrantedQoS = 0b10000000
 				rp.show()
 				self.send(rp.build())
 			elif r == 100:
