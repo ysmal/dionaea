@@ -339,6 +339,8 @@ def matches(topic, a_filter):
 	if "#" not in a_filter and "+" not in a_filter:
 		# if filter doesn't contain wildcard, return exact match
 		return a_filter == topic
+	elif '#' in a_filter and '$SYS' in topic:
+		return False
 	else:
 		# else use regex
 		match_pattern = re.compile(a_filter.replace('#', '.*')
