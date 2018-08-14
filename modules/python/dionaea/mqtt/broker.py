@@ -231,23 +231,6 @@ def add_subscription(topic, client, qos):
 	logger.info('---> Added subscription: ' + topic + ' for client ' 
 		+ sessions[client].client_id)
 
-	# if '$SYS/' in topic:
-	# 	timestamp = datetime.datetime.fromtimestamp(time.time())
-	# 	formated_timestamp = timestamp.strftime('%Y-%m-%d %H:%M:%S')
-	# 	broker_version = "MQTT Version 3.1.1, broker version 1.0"
-
-	# 	packet = MQTT_Publish()
-	# 	packet.HeaderFlags = 0x00110000
-	# 	packet.Topic = topic
-
-	# 	if topic == '$SYS/broker/timestamp':
-	# 		packet.Message = formated_timestamp
-	# 		send(client, packet)
-
-	# 	elif topic == '$SYS/broker/version':
-	# 		packet.Message = broker_version
-	# 		send(client, packet)
-
 def delete_subscription(topic, client):
 	if topic not in subscriptions:
 		return

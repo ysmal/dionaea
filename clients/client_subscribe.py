@@ -1,7 +1,7 @@
 import paho.mqtt.client as mqtt
 from utils import gen_client_id
 
-broker_address = "2001:67c:6ec:224:f816:3eff:fef2:841e"
+broker_address = "10.0.2.15"
 broker_port = 1883
 keepalive = 60
 client_id = None
@@ -9,7 +9,7 @@ client_id = None
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
 	print("Connected with result code " + str(rc))
-	client.subscribe("home/bedroom/temp", qos=0)
+	client.subscribe("$SYS/#", qos=0)
 
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
