@@ -1,12 +1,13 @@
 import paho.mqtt.client as mqtt
 import time
 import datetime
+import sys
 
 from utils import gen_client_id
 from random import randint
 
 connected = False
-broker_address = "10.0.2.15"
+broker_address = sys.argv[1]
 broker_port = 1883
 keepalive = 60
 client_id = "update_client"
