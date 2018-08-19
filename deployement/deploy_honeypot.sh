@@ -1,27 +1,27 @@
 #!/bin/bash
 
 # Install required build dependencies before configuring and building dionaea.
-# sudo apt-get install \
-#     autoconf \
-#     automake \
-#     build-essential \
-#     check \
-#     cython3 \
-#     libcurl4-openssl-dev \
-#     libemu-dev \
-#     libev-dev \
-#     libglib2.0-dev \
-#     libloudmouth1-dev \
-#     libnetfilter-queue-dev \
-#     libnl-dev \
-#     libpcap-dev \
-#     libssl-dev \
-#     libtool \
-#     libudns-dev \
-#     python3 \
-#     python3-dev \
-#     python3-bson \
-#     python3-yaml
+sudo apt-get install \
+    autoconf \
+    automake \
+    build-essential \
+    check \
+    cython3 \
+    libcurl4-openssl-dev \
+    libemu-dev \
+    libev-dev \
+    libglib2.0-dev \
+    libloudmouth1-dev \
+    libnetfilter-queue-dev \
+    libnl-dev \
+    libpcap-dev \
+    libssl-dev \
+    libtool \
+    libudns-dev \
+    python3 \
+    python3-dev \
+    python3-bson \
+    python3-yaml
 
 # After all dependencies have been installed successfully run autreconf to build or rebuild the build scripts.
 autoreconf -vi
